@@ -1,0 +1,1 @@
+from .scrapers_base import BaseScraper

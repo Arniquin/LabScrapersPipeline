@@ -1,0 +1,20 @@
+# --- Core y Utilidades ---
+python-dotenv==1.0.1
+requests==2.31.0
+polars==0.20.10
+
+# --- Automatización y Scrapping ---
+# Selenium 4.18+ es ideal para Python 3.11
+selenium==4.12.0
+selenium-wire==5.1.0
+
+# --- Intellisense y Productividad (IDE Experience) ---
+jupyterlab-lsp==5.0.3
+python-lsp-server[all]==1.10.0
+jupyter-resource-usage==1.0.2
+jupyterlab-execute-time==3.1.2
+
+# --- Opcional: Soporte GPU (Si vas a usar la 1080ti en el Ryzen) ---
+# Estas versiones son muy estables con CUDA 11.8/12.1
+# torch==2.2.1
+# torchvision==0.17.1

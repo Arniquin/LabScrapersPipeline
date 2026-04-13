@@ -1,0 +1,62 @@
+services:
+  # --- Contenedor de Jupyter ---
+  jupyterlab:
+    build:
+      context: ./jupyter/
+    container_name: jupyterlab
+    restart: unless-stopped
+    depends_on:
+      - chrome
+    volumes:
+      - ./jupyter/jupyter_data:/home/jovyan/work
+    env_file:
+      - .env
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN}
+      - SELENIUM_REMOTE_URL=http://chrome:4444/wd/hub
+      - DECODO_USERNAME=${DECODO_USERNAME}
+      - DECODO_PASSWORD=${DECODO_PASSWORD}
+    ports:
+      - "8888:8888"
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    # # labels:
+    #   - traefik.enable=true
+    #   - traefik.http.routers.jupyter.rule=Host(`lab.${DOMAIN}`)
+    #   - traefik.http.routers.jupyter.entrypoints=websecure
+    #   - traefik.http.routers.jupyter.tls.certresolver=letsencrypt
+    #   - traefik.http.routers.jupyter.middlewares=secured@file
+    #   - traefik.http.services.jupyter.loadbalancer.server.port=8888
+
+  # --- Contenedor de Chrome (Selenium + NoVNC) ---
+  chrome:
+    image: selenium/standalone-chrome:latest
+    container_name: selenium-chrome
+    restart: unless-stopped
+    shm_size: 2gb
+    environment:
+      - SE_NODE_MAX_SESSIONS=2
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - VNC_NO_PASSWORD=1 # Authelia ya se encarga de la seguridad
+    ports:
+      - "7900:7900"
+    # labels:
+    #   - traefik.enable=true
+    #   # Subdominio para ver el Bot
+    #   - traefik.http.routers.bot.rule=Host(`bot.${DOMAIN}`)
+    #   - traefik.http.routers.bot.entrypoints=websecure
+    #   - traefik.http.routers.bot.tls.certresolver=letsencrypt
+    #   - traefik.http.routers.bot.middlewares=secured@file
+    #   # Puerto 7900 es para la interfaz web noVNC
+    #   - traefik.http.services.bot.loadbalancer.server.port=7900
+
+# networks:
+#   default:
+#     external:
+#       name: traefik_network
