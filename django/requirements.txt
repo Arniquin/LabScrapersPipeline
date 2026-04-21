@@ -1,0 +1,34 @@
+# --- Core Framework ---
+# Django 5.2 provides Long Term Support (LTS) through 2028
+Django>=5.2,<5.3
+
+# --- API Layer (Choose ONE or keep both to experiment) ---
+# Option A: Django Ninja (Modern, Fast, Pydantic-based)
+django-ninja>=1.1.0
+
+# Option B: Django REST Framework (The Industry Standard)
+djangorestframework>=3.15.0
+# OpenAPI 3 support for DRF
+drf-spectacular>=0.27.0
+
+# --- Database & Performance ---
+# PostgreSQL adapter (requires libpq-dev in your Dockerfile)
+psycopg2-binary>=2.9.9
+# Connection pooling and high-perf WSGI server
+gunicorn>=23.0.0
+# For async support in Django (Uvicorn)
+uvicorn[standard]>=0.30.0
+
+# --- Security & Environment ---
+# For handling .env files
+python-dotenv>=1.0.1
+# Security headers for production
+django-csp>=3.8
+# CORS headers for API access from other domains
+django-cors-headers>=4.4.0
+
+# --- Utilities ---
+# Image processing (requires libjpeg-dev in your Dockerfile)
+Pillow>=10.3.0
+# Advanced data validation
+pydantic>=2.7.0

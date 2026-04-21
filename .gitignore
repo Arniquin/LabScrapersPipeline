@@ -208,3 +208,6 @@ __marimo__/
 
 # Variables de entorno
 .env
+
+# Base de datos
+/postgres
