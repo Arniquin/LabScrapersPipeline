@@ -155,6 +155,13 @@ class BaseScraper:
         except TimeoutException:
             return None
 
+    def wait_for_visible(self, locator: Locator, timeout: Optional[int] = None) -> Optional[WebElement]:
+        wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
+        try:
+            return wait.until(EC.visibility_of_element_located(locator))
+        except TimeoutException:
+            return None
+
     def get_all_objects(self, locator: Locator, timeout: Optional[int] = None) -> List[WebElement]:
         wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
         try:

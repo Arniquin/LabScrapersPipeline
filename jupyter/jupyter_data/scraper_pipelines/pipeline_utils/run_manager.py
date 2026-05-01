@@ -6,7 +6,6 @@ class RunManager:
     def __init__(self, client_name: str, pipeline_name: str):
         self._client_name = client_name
         self._pipeline_name = pipeline_name
-        
         self._api_token = os.getenv('PIPELINE_API_SECRET')
         self._api_base_url = os.getenv('DJANGO_API_URL')
         
@@ -29,7 +28,7 @@ class RunManager:
         return urljoin(base, endpoint.lstrip('/'))
 
     def _start_run(self) -> str:
-        url = self._get_url("runs/start/")
+        url = self._get_url("runs/start")
         body = {
             "client_name": self._client_name,
             "pipeline_name": self._pipeline_name,
@@ -40,9 +39,10 @@ class RunManager:
         return response.json()['run_id']
 
     def update_run(self, status, step, last_log):
-        url = self._get_url(f"runs/{self._run_id}/update/")
+        url = self._get_url(f"runs/{self._run_id}/update")
         self._status = status
-        self._step
+        self._step = step
+        self._last_log = last_log
         body = {
             "status": status,
             "step": step,
@@ -52,17 +52,22 @@ class RunManager:
         response.raise_for_status()
 
     def store_raw_data(self, data_dict):
-        url = self._get_url(f"runs/{self._run_id}/raw/")
+        url = self._get_url(f"runs/{self._run_id}/raw")
         response = self.session.post(url, json={"payload": data_dict})
         response.raise_for_status()
 
     def store_cleaned_data(self, data_dict):
-        url = self._get_url(f"runs/{self._run_id}/cleaned/")
+        url = self._get_url(f"runs/{self._run_id}/cleaned")
         response = self.session.post(url, json={"payload": data_dict})
         response.raise_for_status()
 
     def set_run_fail(self, last_log):
         self._status = 'FAILED'
+        self._last_log = last_log
+        self.update_run(self._status, self._step, self._last_log)
+
+    def set_run_end(self, last_log):
+        self._status = 'FINISHED'
         self._last_log = last_log
         self.update_run(self._status, self._step, self._last_log)
 
