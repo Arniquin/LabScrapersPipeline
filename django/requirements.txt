@@ -2,7 +2,7 @@
 # Django 5.2 provides Long Term Support (LTS) through 2028
 Django>=5.2,<5.3
 
-# --- API Layer (Choose ONE or keep both to experiment) ---
+# --- API Layer ---
 # Option A: Django Ninja (Modern, Fast, Pydantic-based)
 django-ninja>=1.1.0
 
@@ -12,7 +12,7 @@ djangorestframework>=3.15.0
 drf-spectacular>=0.27.0
 
 # --- Database & Performance ---
-# PostgreSQL adapter (requires libpq-dev in your Dockerfile)
+# PostgreSQL adapter
 psycopg2-binary>=2.9.9
 # Connection pooling and high-perf WSGI server
 gunicorn>=23.0.0
@@ -28,7 +28,17 @@ django-csp>=3.8
 django-cors-headers>=4.4.0
 
 # --- Utilities ---
-# Image processing (requires libjpeg-dev in your Dockerfile)
+# Image processing
 Pillow>=10.3.0
 # Advanced data validation
 pydantic>=2.7.0
+
+# --- Asynchronous Tasks & Scheduling (Celery + Redis) ---
+# The main task queue framework
+celery>=5.4.0
+# Python client for the Redis broker
+redis>=5.0.0
+# Stores task results in the Django Database (requires 'django_celery_results' in INSTALLED_APPS)
+django-celery-results>=2.5.1
+# Database-backed periodic tasks (requires 'django_celery_beat' in INSTALLED_APPS)
+django-celery-beat>=2.7.0

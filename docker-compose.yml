@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./django:/app
+      - ./jupyter/jupyter_data:/app/jupyter_data
     environment:
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=${POSTGRES_DB:-djangodb}
@@ -14,15 +15,42 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - DB_HOST=db
       - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
     env_file:
       - .env
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - redis
     command: >
       sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
+
+  # --- Celery Worker (Para ejecutar los scrapers en segundo plano) ---
+  celery_worker:
+    build:
+      context: ./django/
+    container_name: celery_worker
+    restart: unless-stopped
+    volumes:
+      - ./django:/app
+    environment:
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=${POSTGRES_DB:-djangodb}
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - SELENIUM_REMOTE_URL=http://chrome:4444/wd/hub
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+      - chrome
+    command: celery -A config worker --loglevel=info
 
   # --- PostgreSQL Database ---
   db:
@@ -37,6 +65,14 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     env_file:
       - .env
+
+  # --- Redis Broker (Mensajería para Celery) ---
+  redis:
+    image: redis:7-alpine
+    container_name: redis_broker
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
 
   # --- Contenedor de Jupyter ---
   jupyterlab:

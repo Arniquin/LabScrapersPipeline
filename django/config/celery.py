@@ -1,0 +1,15 @@
+# django/config/celery.py
+import os
+from celery import Celery
+
+# Set the default Django settings module for the 'celery' program.
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+# Name the app
+app = Celery('pipeline_orchestrator')
+
+# Read config from Django settings, using a CELERY namespace.
+app.config_from_object('django.conf:settings', namespace='CELERY')
+
+# Load task modules from all registered Django apps.
+app.autodiscover_tasks()

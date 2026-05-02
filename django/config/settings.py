@@ -39,7 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'ninja',
-    'core'
+    'core',
+    'pipelines_dashboard',
+    'django_celery_results',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -129,3 +132,10 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 PIPELINE_API_SECRET = os.getenv("PIPELINE_API_SECRET", "fallback-secret-for-dev-only")
+
+CELERY_BROKER_URL = 'redis://redis:6379/0' 
+
+# Store task results in the database (optional but highly recommended for tracking)
+CELERY_RESULT_BACKEND = 'django-db' 
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
