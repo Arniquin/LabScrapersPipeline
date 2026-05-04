@@ -1,0 +1,42 @@
+<!-- 1. Add 'relative' to the class list -->
+<td colspan="4" class="px-12 py-6 border-l-4 border-blue-500 relative">
+    <!-- 3. Your existing content follows -->
+    <div class="grid grid-cols-2 gap-8">
+        <!-- Linked Pipelines List -->
+        <div>
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">link</span> lines
+            </h3>
+            <ul class="space-y-2">
+                {% for pipe in client.pipelines.all %}
+                <li class="flex justify-between items-center bg-slate-800 p-2 rounded border border-slate-700">
+                    <span class="text-sm font-mono text-blue-400">{{ pipe.name }}</span>
+                    <button hx-post="{% url 'update_client_pipelines' client.id %}"
+                            hx-vals='{"pipeline_id": "{{ pipe.id }}", "action": "remove"}'
+                            hx-target="#details-{{ client.id }}"
+                            class="text-red-500 material-symbols-outlined text-sm">close</button>
+                </li>
+                {% empty %}
+                <p class="text-xs text-slate-500 italic">No pipelines assigned.</p>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Add New Pipeline Form -->
+        <div>
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Assign Pipeline</h3>
+            <form hx-post="{% url 'update_client_pipelines' client.id %}" 
+                  hx-target="#details-{{ client.id }}"
+                  class="flex gap-2">
+                <input type="hidden" name="action" value="add">
+                <select name="pipeline_id" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1 text-sm outline-none focus:border-blue-500">
+                    <option value="" disabled selected>Select a pipeline...</option>
+                    {% for pipe in available_pipelines %}
+                    <option value="{{ pipe.id }}">{{ pipe.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="bg-blue-600 px-3 py-1 rounded text-sm font-bold">Add</button>
+            </form>
+        </div>
+    </div>
+</td>

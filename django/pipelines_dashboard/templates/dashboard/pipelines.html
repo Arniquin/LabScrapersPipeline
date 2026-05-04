@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | Pipeline Lab{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-extrabold tracking-tight">Pipelines</h1>
+        <p class="text-slate-400 text-sm mt-1">Manage the pipeline nodes in jupyter lab</p>
+    </div>
+    
+    <!-- LOAD PIPELINES BUTTON -->
+    <button hx-post="{% url 'load_pipelines' %}" 
+            hx-target="#pipeline-table-body" 
+            hx-swap="innerHTML"
+            hx-indicator="#load-indicator"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-3 transition">
+        <span class="material-symbols-outlined text-2xl">autorenew</span>
+        <span> Load Pipelines</span>
+        <svg id="load-indicator" class="htmx-indicator animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </button>
+</header>
+
+<div class="grid gap-8">
+    
+    <!-- SECTION 1: AVAILABLE PIPELINES -->
+    <section class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="p-4 border-b border-slate-700 bg-slate-800/50">
+            <h2 class="font-semibold flex items-center gap-2">
+                <span class="material-symbols-outlined text-slate-400">folder_open</span>
+                Available Pipelines
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="text-xs uppercase text-slate-400 bg-slate-900/50">
+                    <tr>
+                        <th class="px-6 py-3">Pipeline Name</th>
+                        <th class="px-6 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pipeline-table-body" class="divide-y divide-slate-700">
+                    <!-- Django will load the initial rows using the partial -->
+                    {% include 'dashboard/partials/pipeline_rows.html' %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- SECTION 2: RECENT RUNS -->
+    <section class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="p-4 border-b border-slate-700 bg-slate-800/50">
+            <h2 class="font-semibold flex items-center gap-2">
+                <span class="material-symbols-outlined text-slate-400">monitor_heart</span>
+                Recent Pipeline Runs
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="text-xs uppercase text-slate-400 bg-slate-900/50">
+                    <tr>
+                        <th class="px-6 py-3">Client</th>
+                        <th class="px-6 py-3">Pipeline</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Step</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700">
+                    {% for run in recent_runs %}
+                    <tr class="hover:bg-slate-700/30 transition-colors">
+                        <td class="px-6 py-4 font-medium">{{ run.client_name }}</td>
+                        <td class="px-6 py-4 text-slate-400">{{ run.pipeline_name }}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded text-xs {% if run.status == 'RUNNING' %}bg-blue-500/20 text-blue-400{% else %}bg-slate-700 text-slate-300{% endif %}">
+                                {{ run.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 font-mono text-xs text-yellow-500">{{ run.step }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

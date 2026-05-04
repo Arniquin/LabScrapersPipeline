@@ -1,0 +1,38 @@
+<!-- The Main Clickable Bar -->
+<tr id="client-row-{{ client.id }}" 
+    hx-get="{% url 'toggle_client' client.id %}?expanded={% if expanded %}true{% else %}false{% endif %}"
+    hx-target="this"
+    hx-swap="outerHTML"
+    class="cursor-pointer hover:bg-slate-700/40 transition-colors {% if expanded %}bg-slate-700/20 border-l-4 border-blue-500{% endif %}">
+    
+    <td class="px-6 py-4">
+        <span class="material-symbols-outlined transition-transform {% if expanded %}rotate-180{% endif %}">
+            expand_more
+        </span>
+    </td>
+    <td class="px-6 py-4">
+        <div class="font-bold text-slate-100">{{ client.name }}</div>
+        <!-- UI Polish: Show a count so you see the update immediately on the bar -->
+        <div class="text-xs text-slate-500">{{ client.pipelines.count }} active pipelines</div>
+    </td>
+    <td class="px-6 py-4 text-slate-400 text-sm">{{ client.email|default:"No contact email" }}</td>
+    <td class="px-6 py-4 text-right">
+        <button hx-post="{% url 'delete_client' client.id %}"
+                hx-target="#client-row-{{ client.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="Delete {{ client.name }}?"
+                onclick="event.stopPropagation()"
+                class="text-red-400 hover:text-red-300 material-symbols-outlined">
+            delete
+        </button>
+    </td>
+</tr>
+
+<!-- The Details Block (Handled by OOB Swap) -->
+<tr id="details-{{ client.id }}" hx-swap-oob="true" class="{% if not expanded %}hidden{% endif %}">
+    {% if expanded %}
+        {% include 'dashboard/partials/client_expanded_content.html' %}
+    {% else %}
+        <td colspan="4"></td>
+    {% endif %}
+</tr>

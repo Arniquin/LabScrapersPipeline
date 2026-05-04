@@ -7,8 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- HTMX CDN - Prepared for your dynamic updates -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex" 
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
     <!-- SIDEBAR -->
     <aside class="w-64 bg-slate-800 border-r border-slate-700 fixed h-full flex flex-col">
@@ -19,14 +21,34 @@
         </div>
 
         <nav class="flex-1 px-4 space-y-2">
-            <a href="{% url 'index' %}" class="block px-4 py-2 rounded-lg bg-blue-600 text-white font-medium">
-                📊 Dashboard
+            <!-- Pipelines Link -->
+            <a href="{% url 'pipelines' %}" 
+            class="flex w-full items-center px-4 py-2 rounded-lg font-medium gap-x-2 transition-all duration-200
+            {% if request.resolver_match.url_name == 'pipelines' %}
+                bg-blue-600 text-white
+            {% else %}
+                text-slate-400 hover:bg-slate-700/50 hover:text-white
+            {% endif %}">
+                <span class="material-symbols-outlined text-2xl 
+                    {% if request.resolver_match.url_name == 'pipelines' %}text-white{% else %}text-blue-500{% endif %}">
+                    water_pump
+                </span>
+                <span>Pipelines</span>
             </a>
-            <a href="#" class="block px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition">
-                ⚙️ Pipeline Admin
-            </a>
-            <a href="#" class="block px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition">
-                👥 Clients
+            
+            <!-- Clients Link -->
+            <a href="{% url 'clients_list' %}" 
+            class="flex w-full items-center px-4 py-2 rounded-lg font-medium gap-x-2 transition-all duration-200
+            {% if request.resolver_match.url_name == 'clients_list' or request.resolver_match.url_name == 'add_client' %}
+                bg-blue-600 text-white
+            {% else %}
+                text-slate-400 hover:bg-slate-700/50 hover:text-white
+            {% endif %}">
+                <span class="material-symbols-outlined text-2xl 
+                    {% if request.resolver_match.url_name == 'clients_list' %}text-white{% else %}text-blue-500{% endif %}">
+                    contacts_product
+                </span>
+                <span>Clients</span>
             </a>
         </nav>
 

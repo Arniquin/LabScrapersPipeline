@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-extrabold">Client Management</h1>
+    <button hx-get="{% url 'client_add_form' %}" 
+        hx-target="#client-table-body" 
+        hx-swap="afterbegin"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition">
+    <span class="material-symbols-outlined">person_add</span> 
+        Add Client
+    </button>
+</header>
+
+<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <table class="w-full text-left">
+        <thead class="text-xs uppercase text-slate-400 bg-slate-900/50">
+            <tr>
+                <th class="px-6 py-3 w-10"></th>
+                <th class="px-6 py-3">Client Name</th>
+                <th class="px-6 py-3">Contact</th>
+                <th class="px-6 py-3 text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="client-table-body" class="divide-y divide-slate-700">
+            {% for client in clients %}
+                <!-- This include now provides BOTH the client row and the details row -->
+                {% include 'dashboard/partials/client_row_toggle.html' with expanded=False %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

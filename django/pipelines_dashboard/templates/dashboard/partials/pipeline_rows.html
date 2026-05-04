@@ -1,0 +1,17 @@
+{% for pipeline in pipelines %}
+<tr class="hover:bg-slate-700/30 transition-colors">
+    <td class="px-6 py-4 font-mono text-sm text-blue-400">{{ pipeline.name }}</td>
+    <td class="px-6 py-4 text-right">
+        <button hx-post="{% url 'update_pipeline' pipeline.id %}"
+                hx-swap="outerHTML"
+                class="inline-flex items-center justify-center gap-x-2 text-base font-bold bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded transition">
+            <span class="material-symbols-outlined text-2xl">autorenew</span>
+            <span>Update</span>
+        </button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="2" class="px-6 py-8 text-center text-slate-500 italic">No pipelines found. Click "Load Pipelines" to scan your directory.</td>
+</tr>
+{% endfor %}

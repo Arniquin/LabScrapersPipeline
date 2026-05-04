@@ -16,6 +16,7 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
     env_file:
       - .env
     ports:
