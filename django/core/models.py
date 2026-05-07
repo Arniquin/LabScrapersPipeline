@@ -14,15 +14,29 @@ class Client(models.Model):
     email = models.EmailField(null=True, blank=True)
     number = models.CharField(max_length=20, null=True, blank=True)
     
-    # Many-to-Many relationship added here
-    pipelines = models.ManyToManyField(
-        Pipeline, 
-        related_name='clients', 
-        blank=True
-    )
+    # The ManyToMany field is REMOVED. 
+    # We will use the reverse relationship from PipelineInstance instead.
 
     def __str__(self):
         return self.name
+
+class PipelineInstance(models.Model):
+    FREQUENCY_CHOICES = [
+        ('DAILY', 'Daily'),
+        ('WEEKLY', 'Weekly'),
+        ('MONTHLY', 'Monthly'),
+        ('MANUAL', 'Manual'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    alias = models.CharField(max_length=255, null=True, blank=True, help_text="Custom name for this instance")
+    client = models.ForeignKey('Client', on_delete=models.CASCADE, related_name='pipeline_instances')
+    pipeline = models.ForeignKey('Pipeline', on_delete=models.CASCADE, related_name='instances')
+    pipeline_params = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='MANUAL')
+    is_queued = models.BooleanField(default=False) # Marked by dispatcher for daily work
+    last_run_at = models.DateTimeField(null=True, blank=True)
 
 class Run(models.Model):
     STATUS_CHOICES = [
@@ -37,6 +51,7 @@ class Run(models.Model):
         ('STORING_CLEANED_DATA', 'Storing Cleaned Data')
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    instance = models.ForeignKey(PipelineInstance, on_delete=models.CASCADE, related_name='runs')
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='runs')
     pipeline = models.ForeignKey(Pipeline, on_delete=models.CASCADE, related_name='runs')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='RUNNING')
@@ -44,6 +59,17 @@ class Run(models.Model):
     last_log = models.TextField(null=True, blank=True)  
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+class ScraperSettings(models.Model):
+    max_concurrent_instances = models.IntegerField(default=2)
+    # Using integer hours (0-23) for simplicity in the dispatcher
+    window_start_hour = models.IntegerField(default=9) # 9 AM
+    window_end_hour = models.IntegerField(default=18)  # 6 PM
+
+    @classmethod
+    def get_settings(cls):
+        obj, _ = cls.objects.get_or_create(id=1)
+        return obj
 
 class RawData(models.Model):
     run = models.OneToOneField(Run, on_delete=models.CASCADE, related_name='raw_data')

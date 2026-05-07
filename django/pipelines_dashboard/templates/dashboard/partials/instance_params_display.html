@@ -1,0 +1,9 @@
+<div class="flex justify-between items-center mb-1">
+    <span class="text-[9px] font-bold text-slate-600 uppercase tracking-tighter">Configuration (JSON)</span>
+    <button hx-get="{% url 'edit_instance_params' instance.id %}"
+            hx-target="#params-container-{{ instance.id }}"
+            class="text-[10px] text-blue-400 hover:text-blue-300 underline">Edit Params</button>
+</div>
+<div class="text-[10px] font-mono text-slate-400 bg-slate-950/50 p-2 rounded-lg border border-slate-800 break-all">
+    {{ instance.pipeline_params|default:"{}" }}
+</div>

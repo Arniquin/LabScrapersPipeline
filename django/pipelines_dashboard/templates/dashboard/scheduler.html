@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header class="mb-8 space-y-6">
+    <div class="flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-100 tracking-tight">Global Scheduler</h1>
+            <p class="text-slate-400 text-sm mt-1">Manage execution windows and concurrency limits.</p>
+        </div>
+
+        <div class="flex gap-3 bg-slate-800 p-2 rounded-xl border border-slate-700">
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-2 top-1.5 text-slate-500 text-sm">search</span>
+                <input type="text" name="client_q" value="{{ client_q }}" placeholder="Filter Client..." 
+                       hx-get="{% url 'scheduler_view' %}" hx-trigger="keyup changed delay:500ms" hx-target="body" hx-push-url="true"
+                       class="bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 w-48">
+            </div>
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-2 top-1.5 text-slate-500 text-sm">filter_list</span>
+                <input type="text" name="pipeline_q" value="{{ pipeline_q }}" placeholder="Filter Pipeline..." 
+                       hx-get="{% url 'scheduler_view' %}" hx-trigger="keyup changed delay:500ms" hx-target="body" hx-push-url="true"
+                       class="bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-none focus:border-blue-500 w-48">
+            </div>
+        </div>
+    </div>
+    
+    <div class="flex flex-wrap gap-6 bg-slate-800 p-5 rounded-2xl border border-slate-700 items-center shadow-lg">
+        </div>
+</header>
+
+<div class="space-y-8">
+    {% for client in clients %}
+    <section class="bg-slate-800/40 rounded-2xl border border-slate-700/50 overflow-hidden shadow-sm">
+        <div class="bg-slate-800/80 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+            <h2 class="font-bold text-slate-200 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-300">
+                    {{ client.name|slice:":1" }}
+                </div>
+                {{ client.name }}
+            </h2>
+        </div>
+        
+        <table class="w-full text-left">
+            <thead class="text-[10px] uppercase text-slate-500 bg-slate-900/30">
+                <tr>
+                    <th class="px-8 py-3">Pipeline / Alias</th>
+                    <th class="px-8 py-3">Active</th>
+                    <th class="px-8 py-3">Frequency</th>
+                    <th class="px-8 py-3">Manual Action</th> <th class="px-8 py-3 text-right">Last Execution</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700/30">
+                {% for instance in client.pipeline_instances.all %}
+                {% if not pipeline_q or pipeline_q.lower in instance.pipeline.name.lower or pipeline_q.lower in instance.alias.lower %}
+                <tr class="hover:bg-slate-700/10 transition-colors group">
+                    <td class="px-8 py-4">
+                        <div class="text-sm font-bold text-blue-400 group-hover:text-blue-300">
+                            {{ instance.alias|default:instance.pipeline.name }}
+                        </div>
+                        <div class="text-[10px] text-slate-500">Blueprint: {{ instance.pipeline.name }}</div>
+                    </td>
+
+                    <td class="px-8 py-4">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" {% if instance.is_active %}checked{% endif %}
+                                   hx-post="{% url 'toggle_instance_active' instance.id %}"
+                                   class="sr-only peer">
+                            <div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </label>
+                    </td>
+
+                    <td class="px-8 py-4">
+                        <select name="frequency" hx-post="{% url 'update_instance_frequency' instance.id %}"
+                                class="bg-slate-900 border border-slate-700 text-xs rounded-lg px-3 py-1.5 outline-none text-slate-300">
+                            {% for code, label in instance.FREQUENCY_CHOICES %}
+                            <option value="{{ code }}" {% if instance.frequency == code %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+
+                    <td class="px-8 py-4">
+                        <button hx-post="{% url 'run_instance_manual' instance.id %}"
+                                hx-swap="outerHTML"
+                                hx-indicator="#run-indicator-{{ instance.id }}"
+                                class="flex items-center gap-2 bg-slate-700 hover:bg-blue-600 text-[10px] font-bold px-3 py-1.5 rounded transition shadow-sm active:scale-95">
+                            <span class="material-symbols-outlined text-sm">play_arrow</span>
+                            Run Now
+                            <div id="run-indicator-{{ instance.id }}" class="htmx-indicator animate-spin h-3 w-3 border-2 border-white/20 border-t-white rounded-full"></div>
+                        </button>
+                    </td>
+
+                    <td class="px-8 py-4 text-right">
+                        {% if instance.last_run_at %}
+                            <div class="text-xs text-slate-300">{{ instance.last_run_at|date:"M d, H:i" }}</div>
+                        {% else %}
+                            <span class="text-xs text-slate-600 italic">Never Run</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% empty %}
+    <p class="text-center text-slate-500 py-10">No clients match your filter.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,42 +1,96 @@
-<!-- 1. Add 'relative' to the class list -->
-<td colspan="4" class="px-12 py-6 border-l-4 border-blue-500 relative">
-    <!-- 3. Your existing content follows -->
-    <div class="grid grid-cols-2 gap-8">
-        <!-- Linked Pipelines List -->
+<td colspan="4" class="px-12 py-8 border-l-4 border-blue-500 bg-slate-900/40 relative">
+    <div class="grid grid-cols-2 gap-12">
+        
         <div>
-            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">link</span> lines
+            <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">settings_input_component</span> 
+                Deployed Instances
             </h3>
-            <ul class="space-y-2">
-                {% for pipe in client.pipelines.all %}
-                <li class="flex justify-between items-center bg-slate-800 p-2 rounded border border-slate-700">
-                    <span class="text-sm font-mono text-blue-400">{{ pipe.name }}</span>
-                    <button hx-post="{% url 'update_client_pipelines' client.id %}"
-                            hx-vals='{"pipeline_id": "{{ pipe.id }}", "action": "remove"}'
-                            hx-target="#details-{{ client.id }}"
-                            class="text-red-500 material-symbols-outlined text-sm">close</button>
+            
+            <ul class="space-y-3">
+                {% for instance in client.pipeline_instances.all %}
+                <li class="group flex flex-col bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 transition-all shadow-sm">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <div class="text-sm font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
+                                {{ instance.alias|default:instance.pipeline.name }}
+                            </div>
+                            {% if instance.alias %}
+                            <div class="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5">
+                                <span class="material-symbols-outlined text-[10px]">data_object</span>
+                                <span>Blueprint: {{ instance.pipeline.name }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <button hx-post="{% url 'update_client_pipelines' client.id %}"
+                                hx-vals='{"instance_id": "{{ instance.id }}", "action": "remove"}'
+                                hx-target="#client-row-{{ client.id }}"
+                                hx-confirm="Shutdown and remove this instance?"
+                                class="text-slate-600 hover:text-red-400 transition-colors material-symbols-outlined text-lg">
+                            cancel
+                        </button>
+                    </div>
+                    
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[9px] font-bold text-slate-600 uppercase tracking-tighter">Configuration (JSON)</span>
+                        <div class="text-[10px] font-mono text-slate-400 bg-slate-950/50 p-2 rounded-lg border border-slate-800 break-all">
+                            <div class="flex flex-col gap-1 mt-3" id="params-container-{{ instance.id }}">
+                                {% include 'dashboard/partials/instance_params_display.html' %}
+                            </div>
+                        </div>
+                    </div>
                 </li>
                 {% empty %}
-                <p class="text-xs text-slate-500 italic">No pipelines assigned.</p>
+                <div class="flex flex-col items-center py-8 px-4 border-2 border-dashed border-slate-800 rounded-xl">
+                    <span class="material-symbols-outlined text-slate-700 text-3xl mb-2">precision_manufacturing</span>
+                    <p class="text-xs text-slate-600 italic">No active instances for this client.</p>
+                </div>
                 {% endfor %}
             </ul>
         </div>
 
-        <!-- Add New Pipeline Form -->
-        <div>
-            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Assign Pipeline</h3>
+        <div class="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/50">
+            <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">add_task</span> 
+                Deploy New Instance
+            </h3>
+            
             <form hx-post="{% url 'update_client_pipelines' client.id %}" 
-                  hx-target="#details-{{ client.id }}"
-                  class="flex gap-2">
+                  hx-target="#client-row-{{ client.id }}"
+                  class="space-y-4">
                 <input type="hidden" name="action" value="add">
-                <select name="pipeline_id" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1 text-sm outline-none focus:border-blue-500">
-                    <option value="" disabled selected>Select a pipeline...</option>
-                    {% for pipe in available_pipelines %}
-                    <option value="{{ pipe.id }}">{{ pipe.name }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="bg-blue-600 px-3 py-1 rounded text-sm font-bold">Add</button>
+                
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Instance Alias</label>
+                    <input type="text" name="alias" placeholder="e.g., Real Estate (Daily)"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all placeholder:text-slate-700"
+                           required>
+                </div>
+                
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Select Blueprint</label>
+                    <select name="pipeline_id" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                            required>
+                        <option value="" disabled selected>Choose a pipeline...</option>
+                        {% for pipe in available_pipelines %}
+                        <option value="{{ pipe.id }}">{{ pipe.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-bold text-sm transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 mt-4 active:scale-95">
+                    <span class="material-symbols-outlined text-xl">rocket_launch</span>
+                    Deploy to Client
+                </button>
             </form>
+            
+            <div class="mt-6 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
+                <p class="text-[10px] text-slate-500 leading-relaxed">
+                    <strong class="text-blue-400">Note:</strong> You can deploy multiple instances of the same blueprint. Use the <span class="text-slate-300">Scheduler</span> tab to manage execution windows and frequencies.
+                </p>
+            </div>
         </div>
     </div>
 </td>

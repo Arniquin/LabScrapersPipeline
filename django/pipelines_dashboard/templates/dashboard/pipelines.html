@@ -6,17 +6,16 @@
 <header class="flex justify-between items-center mb-8">
     <div>
         <h1 class="text-3xl font-extrabold tracking-tight">Pipelines</h1>
-        <p class="text-slate-400 text-sm mt-1">Manage the pipeline nodes in jupyter lab</p>
+        <p class="text-slate-400 text-sm mt-1">Manage the pipeline nodes and monitor real-time execution</p>
     </div>
     
-    <!-- LOAD PIPELINES BUTTON -->
     <button hx-post="{% url 'load_pipelines' %}" 
             hx-target="#pipeline-table-body" 
             hx-swap="innerHTML"
             hx-indicator="#load-indicator"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-3 transition">
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-3 transition shadow-lg shadow-blue-900/20">
         <span class="material-symbols-outlined text-2xl">autorenew</span>
-        <span> Load Pipelines</span>
+        <span> Sync Notebooks</span>
         <svg id="load-indicator" class="htmx-indicator animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -26,59 +25,84 @@
 
 <div class="grid gap-8">
     
-    <!-- SECTION 1: AVAILABLE PIPELINES -->
-    <section class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <section class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-sm">
         <div class="p-4 border-b border-slate-700 bg-slate-800/50">
             <h2 class="font-semibold flex items-center gap-2">
-                <span class="material-symbols-outlined text-slate-400">folder_open</span>
-                Available Pipelines
+                <span class="material-symbols-outlined text-blue-500">inventory_2</span>
+                Available Blueprints
             </h2>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
-                <thead class="text-xs uppercase text-slate-400 bg-slate-900/50">
+                <thead class="text-[10px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
                     <tr>
-                        <th class="px-6 py-3">Pipeline Name</th>
+                        <th class="px-6 py-3">Blueprint Name</th>
                         <th class="px-6 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="pipeline-table-body" class="divide-y divide-slate-700">
-                    <!-- Django will load the initial rows using the partial -->
                     {% include 'dashboard/partials/pipeline_rows.html' %}
                 </tbody>
             </table>
         </div>
     </section>
 
-    <!-- SECTION 2: RECENT RUNS -->
-    <section class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <section class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-sm">
         <div class="p-4 border-b border-slate-700 bg-slate-800/50">
             <h2 class="font-semibold flex items-center gap-2">
-                <span class="material-symbols-outlined text-slate-400">monitor_heart</span>
-                Recent Pipeline Runs
+                <span class="material-symbols-outlined text-blue-500">history</span>
+                Recent Execution History
             </h2>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
-                <thead class="text-xs uppercase text-slate-400 bg-slate-900/50">
+                <thead class="text-[10px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
                     <tr>
                         <th class="px-6 py-3">Client</th>
-                        <th class="px-6 py-3">Pipeline</th>
+                        <th class="px-6 py-3">Pipeline / Instance</th>
                         <th class="px-6 py-3">Status</th>
-                        <th class="px-6 py-3">Step</th>
+                        <th class="px-6 py-3">Current Step</th>
+                        <th class="px-6 py-3 text-right">Started</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-700">
                     {% for run in recent_runs %}
                     <tr class="hover:bg-slate-700/30 transition-colors">
-                        <td class="px-6 py-4 font-medium">{{ run.client_name }}</td>
-                        <td class="px-6 py-4 text-slate-400">{{ run.pipeline_name }}</td>
                         <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded text-xs {% if run.status == 'RUNNING' %}bg-blue-500/20 text-blue-400{% else %}bg-slate-700 text-slate-300{% endif %}">
-                                {{ run.status }}
+                            <div class="text-sm font-bold text-slate-200">{{ run.client.name }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-blue-400 font-medium">
+                                {{ run.instance.alias|default:run.pipeline.name }}
+                            </div>
+                            {% if run.instance.alias %}
+                                <div class="text-[10px] text-slate-500 uppercase">{{ run.pipeline.name }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                {% if run.status == 'RUNNING' %}bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20
+                                {% elif run.status == 'FINISHED' %}bg-green-500/10 text-green-400 ring-1 ring-green-500/20
+                                {% elif run.status == 'FAILED' %}bg-red-500/10 text-red-400 ring-1 ring-red-500/20
+                                {% else %}bg-slate-700 text-slate-300{% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full mr-1.5 {% if run.status == 'RUNNING' %}bg-blue-400 animate-pulse{% elif run.status == 'FINISHED' %}bg-green-400{% else %}bg-red-400{% endif %}"></span>
+                                {{ run.get_status_display }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 font-mono text-xs text-yellow-500">{{ run.step }}</td>
+                        <td class="px-6 py-4">
+                            <div class="text-[10px] font-mono py-1 px-2 bg-slate-900 rounded text-yellow-500 inline-block">
+                                {{ run.get_step_display|upper }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right text-xs text-slate-500">
+                            {{ run.created_at|timesince }} ago
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic text-sm">
+                            No runs recorded yet. Start a pipeline from the Scheduler or Client view.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

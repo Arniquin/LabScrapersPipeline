@@ -1,35 +1,47 @@
-<!-- The Main Clickable Bar -->
 <tr id="client-row-{{ client.id }}" 
-    hx-get="{% url 'toggle_client' client.id %}?expanded={% if expanded %}true{% else %}false{% endif %}"
+    hx-get="{% url 'toggle_client' client.id %}?expanded={{ expanded|yesno:'true,false' }}"
     hx-target="this"
     hx-swap="outerHTML"
-    class="cursor-pointer hover:bg-slate-700/40 transition-colors {% if expanded %}bg-slate-700/20 border-l-4 border-blue-500{% endif %}">
+    class="cursor-pointer hover:bg-slate-700/40 transition-colors border-l-4 {% if expanded %}bg-slate-700/20 border-blue-500{% else %}border-transparent{% endif %}">
     
     <td class="px-6 py-4">
-        <span class="material-symbols-outlined transition-transform {% if expanded %}rotate-180{% endif %}">
+        <span class="material-symbols-outlined transition-transform duration-200 {% if expanded %}rotate-180 text-blue-400{% else %}text-slate-500{% endif %}">
             expand_more
         </span>
     </td>
+    
     <td class="px-6 py-4">
         <div class="font-bold text-slate-100">{{ client.name }}</div>
-        <!-- UI Polish: Show a count so you see the update immediately on the bar -->
-        <div class="text-xs text-slate-500">{{ client.pipelines.count }} active pipelines</div>
+        <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 uppercase tracking-tighter border border-slate-700">
+                {{ client.pipeline_instances.count }} Instances
+            </span>
+            {% if client.pipeline_instances.count > 0 %}
+                <span class="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></span>
+            {% endif %}
+        </div>
     </td>
-    <td class="px-6 py-4 text-slate-400 text-sm">{{ client.email|default:"No contact email" }}</td>
+    
+    <td class="px-6 py-4">
+        <div class="text-sm text-slate-400">{{ client.email|default:"No contact email" }}</div>
+        {% if client.number %}
+            <div class="text-[10px] text-slate-500">{{ client.number }}</div>
+        {% endif %}
+    </td>
+    
     <td class="px-6 py-4 text-right">
         <button hx-post="{% url 'delete_client' client.id %}"
                 hx-target="#client-row-{{ client.id }}"
                 hx-swap="outerHTML"
-                hx-confirm="Delete {{ client.name }}?"
+                hx-confirm="Are you sure you want to delete {{ client.name }} and all associated instances?"
                 onclick="event.stopPropagation()"
-                class="text-red-400 hover:text-red-300 material-symbols-outlined">
+                class="p-2 text-slate-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10 material-symbols-outlined">
             delete
         </button>
     </td>
 </tr>
 
-<!-- The Details Block (Handled by OOB Swap) -->
-<tr id="details-{{ client.id }}" hx-swap-oob="true" class="{% if not expanded %}hidden{% endif %}">
+<tr id="details-{{ client.id }}" hx-swap-oob="true" class="{% if not expanded %}hidden{% endif %} bg-slate-900/30">
     {% if expanded %}
         {% include 'dashboard/partials/client_expanded_content.html' %}
     {% else %}

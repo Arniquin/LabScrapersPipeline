@@ -21,7 +21,6 @@
         </div>
 
         <nav class="flex-1 px-4 space-y-2">
-            <!-- Pipelines Link -->
             <a href="{% url 'pipelines' %}" 
             class="flex w-full items-center px-4 py-2 rounded-lg font-medium gap-x-2 transition-all duration-200
             {% if request.resolver_match.url_name == 'pipelines' %}
@@ -36,7 +35,6 @@
                 <span>Pipelines</span>
             </a>
             
-            <!-- Clients Link -->
             <a href="{% url 'clients_list' %}" 
             class="flex w-full items-center px-4 py-2 rounded-lg font-medium gap-x-2 transition-all duration-200
             {% if request.resolver_match.url_name == 'clients_list' or request.resolver_match.url_name == 'add_client' %}
@@ -49,6 +47,34 @@
                     contacts_product
                 </span>
                 <span>Clients</span>
+            </a>
+
+            <a href="{% url 'scheduler_view' %}" 
+            class="flex w-full items-center px-4 py-2 rounded-lg font-medium gap-x-2 transition-all duration-200
+            {% if request.resolver_match.url_name == 'scheduler_view' %}
+                bg-blue-600 text-white
+            {% else %}
+                text-slate-400 hover:bg-slate-700/50 hover:text-white
+            {% endif %}">
+                <span class="material-symbols-outlined text-2xl 
+                    {% if request.resolver_match.url_name == 'scheduler_view' %}text-white{% else %}text-blue-500{% endif %}">
+                    schedule
+                </span>
+                <span>Scheduler</span>
+            </a>
+
+            <a href="{% url 'runs_view' %}" 
+            class="flex w-full items-center px-4 py-2 rounded-lg font-medium gap-x-2 transition-all duration-200
+            {% if request.resolver_match.url_name == 'runs_view' %}
+                bg-blue-600 text-white
+            {% else %}
+                text-slate-400 hover:bg-slate-700/50 hover:text-white
+            {% endif %}">
+                <span class="material-symbols-outlined text-2xl 
+                    {% if request.resolver_match.url_name == 'runs_view' %}text-white{% else %}text-blue-500{% endif %}">
+                    history
+                </span>
+                <span>Runs History</span>
             </a>
         </nav>
 

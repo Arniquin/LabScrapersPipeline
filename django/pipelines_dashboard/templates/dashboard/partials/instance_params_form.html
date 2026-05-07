@@ -1,0 +1,19 @@
+<form hx-post="{% url 'update_instance_params' instance.id %}"
+      hx-target="#params-container-{{ instance.id }}"
+      class="flex flex-col gap-2">
+    <span class="text-[9px] font-bold text-blue-400 uppercase tracking-tighter">Editing Parameters...</span>
+    <textarea name="pipeline_params" 
+              class="w-full h-32 bg-slate-950 text-[10px] font-mono text-blue-300 p-2 rounded-lg border border-blue-500/50 outline-none focus:ring-1 focus:ring-blue-500"
+              spellcheck="false">{{ params_str }}</textarea>
+    
+    <div class="flex gap-2">
+        <button type="submit" class="bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded">
+            Save
+        </button>
+        <button hx-get="{% url 'update_instance_params' instance.id %}" 
+                hx-target="#params-container-{{ instance.id }}"
+                class="bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold px-3 py-1 rounded">
+            Cancel
+        </button>
+    </div>
+</form>
