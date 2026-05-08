@@ -61,7 +61,15 @@ def update_pipeline(request, pipeline_id):
                     if code.strip():
                         script_lines.append(code + "\n\n")
             
-            script_path.write_text("".join(script_lines), encoding='utf-8')
+            # 1. Join the list into a single string
+            full_script = "".join(script_lines)
+            
+            # 2. Perform the replacement for production mode
+            full_script = full_script.replace("IS_DEVELOPMENT = True", "IS_DEVELOPMENT = False")
+            
+            # 3. Write the finalized string to the .py file
+            script_path.write_text(full_script, encoding='utf-8')
+            
             return HttpResponse('<button class="bg-green-600 px-3 py-2 rounded text-white">Updated</button>')
         except Exception as e:
             return HttpResponse(f"Error: {str(e)}", status=500)

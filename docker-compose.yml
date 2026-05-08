@@ -36,6 +36,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./django:/app
+      - ./jupyter/jupyter_data:/app/jupyter_data
     environment:
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=${POSTGRES_DB:-djangodb}
@@ -45,6 +46,8 @@ services:
       - DB_PORT=5432
       - CELERY_BROKER_URL=redis://redis:6379/0
       - SELENIUM_REMOTE_URL=http://chrome:4444/wd/hub
+      - DECODO_USERNAME=${DECODO_USERNAME}
+      - DECODO_PASSWORD=${DECODO_PASSWORD}
     env_file:
       - .env
     depends_on:

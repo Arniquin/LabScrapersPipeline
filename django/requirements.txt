@@ -42,3 +42,12 @@ redis>=5.0.0
 django-celery-results>=2.5.1
 # Database-backed periodic tasks (requires 'django_celery_beat' in INSTALLED_APPS)
 django-celery-beat>=2.7.0
+
+python-dotenv==1.0.1
+requests==2.31.0
+polars==0.20.10
+
+# --- Automatización y Scrapping ---
+# Selenium 4.18+ es ideal para Python 3.11
+selenium==4.12.0
+selenium-wire==5.1.0

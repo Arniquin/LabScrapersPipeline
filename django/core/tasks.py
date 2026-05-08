@@ -93,7 +93,8 @@ def run_pipeline_instance(self, instance_id):
         client=instance.client,
         pipeline=instance.pipeline,
         status='RUNNING',
-        step='DATA_RECOLLECTION'
+        step='DATA_RECOLLECTION',
+        last_log = 'Pipeline started'
     )
     
     # Prepare Paths
@@ -113,7 +114,7 @@ def run_pipeline_instance(self, instance_id):
         # Execute the script
         # We use str(script_path) because subprocess needs a string path
         result = subprocess.run(
-            ["python3", str(script_path), params_str],
+            ["python3", str(script_path), str(run.id) , params_str],
             capture_output=True,
             text=True,
             timeout=3600 # 1 hour safety timeout
@@ -126,13 +127,16 @@ def run_pipeline_instance(self, instance_id):
         else:
             run.status = 'FAILED'
             run.last_log = result.stderr
+            return f"Failed:{result.stderr}"
             
     except subprocess.TimeoutExpired:
         run.status = 'FAILED'
         run.last_log = "Error: Task timed out after 1 hour."
+        return f"Failed:{result.stderr}"
     except Exception as e:
         run.status = 'FAILED'
         run.last_log = f"System Error: {str(e)}"
+        return f"Failed:{result.stderr}"
     
     finally:
         run.save()

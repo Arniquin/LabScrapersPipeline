@@ -1,26 +1,30 @@
-"""
-AUTO-GENERATED FROM example_pipeline.ipynb
-Project: LabScrapersPipeline
-"""
+# AUTO-GENERATED FROM example_pipeline.ipynb
 
-IS_DEVELOPMENT = True
+IS_DEVELOPMENT = False
 
-CLIENT_NAME = None
 PIPELINE_NAME = "example_pipeline"
 
 import os
 import sys
+import json
+from pathlib import Path
 
 if not IS_DEVELOPMENT:
-    CLIENT_NAME = sys.argv[1]
-
+    RUN_ID = sys.argv[1]
+    params_raw = sys.argv[2]
+    PARAMS = json.loads(params_raw)
 else:
-    CLIENT_NAME = "example_client"
+    PARAMS = {}
 
-# Subimos un nivel para llegar a 'scraper_pipelines' y lo añadimos al path
-module_path = os.path.abspath(os.path.join('..'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
+if IS_DEVELOPMENT:
+    module_path = os.path.abspath(os.path.join('..'))
+    if module_path not in sys.path:
+        sys.path.append(module_path)
+else:
+    script_dir = Path(__file__).resolve().parent
+    module_path = script_dir.parent
+    if str(module_path) not in sys.path:
+        sys.path.append(str(module_path))
 
 import time
 import polars as pl
@@ -32,17 +36,16 @@ from selenium.webdriver.common.by import By
 # Development options
 if IS_DEVELOPMENT:
     headless = False
+    run = RunManager.start_run(
+        instance_id="8be90d9f-633b-4231-887c-5b1c80249543"
+    )
 else:
+    run = RunManager(RUN_ID)
     headless = True
 
-# Run Manager Initialization
-run_manager = RunManager(CLIENT_NAME, PIPELINE_NAME)
-
 # Scraper initializiation
-scraper = BaseScraper.create_with_decodo(port=20001, timeout=30, headless = headless)
+scraper = BaseScraper.create_with_decodo(port=20001, timeout=30, headless=headless)
 scraper.driver.get("https://www.scrapethissite.com/")
-
-run_manager.step = "DATA_RECOLLECTION"
 
 SANDBOX_BUTTON = (By.XPATH, "//a[contains(text(), 'Explore Sandbox')]")
 
@@ -51,7 +54,7 @@ try:
     sandbox_button.click()
 except Exception as e:
     scraper.quit()
-    run_manager.set_run_fail(f"SANDBOX_BUTTON: {e}")
+    run.set_run_fail(f"SANDBOX_BUTTON: {e}")
 
 scraper.human_jitter()
 
@@ -62,7 +65,7 @@ try:
     hockey_teams_button.click()
 except Exception as e:
     scraper.quit()
-    run_manager.set_run_fail(f"HOCKEY_TEAMS_BUTTON: {e}")
+    run.set_run_fail(f"HOCKEY_TEAMS_BUTTON: {e}")
 
 scraper.human_jitter()
 
@@ -82,7 +85,7 @@ try:
     headers = raw_data_dict.keys()
 except Exception as e:
     scraper.quit()
-    run_manager.set_run_fail(f"TABLE_HEADERS: {e}")
+    run.set_run_fail(f"TABLE_HEADERS: {e}")
 
 def get_table_data():
     teams_table_elements = scraper.get_all_objects(TEAMS_DATA)
@@ -90,7 +93,6 @@ def get_table_data():
         row = team.find_elements(*TEAM_ROW)
         for i, key in enumerate(headers):
             raw_data_dict[key].append(row[i].text)
-        
 
 # Pagination and data recollection
 try:
@@ -104,17 +106,19 @@ try:
             break
 except Exception as e:
     scraper.quit()
-    run_manager.set_run_fail(f"NEXT_PAGE_BUTTON  or TEAMS_DATA: {e}")
+    run.set_run_fail(f"NEXT_PAGE_BUTTON  or TEAMS_DATA: {e}")
 
 # Closing scraper
 scraper.quit()
 
-try:
-    run_manager.store_raw_data(raw_data_dict)
-except Exception as e:
-    run_manager.set_run_fail(f"STORING_RAW_DATA: {e}")
+run.update(step="STORING_RAW_DATA")
 
-run_manager.step = "CLEANING_RAW_DATA"
+try:
+    run.save_raw_data(raw_data_dict)
+except Exception as e:
+    run.set_run_fail(f"STORING_RAW_DATA: {e}")
+
+run.update(step="CLEANING_RAW_DATA")
 
 raw_df = pl.DataFrame(raw_data_dict)
 clean_df = raw_df.clone()
@@ -137,8 +141,10 @@ clean_df = clean_df.with_columns([
 
 cleaned_data_dict = clean_df.to_dict(as_series=False)
 
+run.update(step="STORING_CLEANED_DATA")
+
 try:
-    run_manager.store_cleaned_data(raw_data_dict)
+    run.save_cleaned_data(cleaned_data_dict)
 except Exception as e:
-    run_manager.set_run_fail(f"STORING_CLEANED_DATA: {e}")
+    run.set_run_fail(f"STORING_CLEANED_DATA: {e}")
 
