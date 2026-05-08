@@ -211,3 +211,6 @@ __marimo__/
 
 # Base de datos
 /postgres
+
+# Agents
+GEMINI.md
