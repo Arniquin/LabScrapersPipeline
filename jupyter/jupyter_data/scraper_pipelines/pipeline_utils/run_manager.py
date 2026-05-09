@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 class RunManager:
-    VALID_STATUSES = ['RUNNING', 'FINISHED', 'FAILED']
+    VALID_STATUSES = ['RUNNING', 'FINISHED', 'FAILED', 'PAUSED']
     VALID_STEPS = [
         'DATA_RECOLLECTION', 
         'STORING_RAW_DATA', 

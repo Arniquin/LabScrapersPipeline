@@ -181,16 +181,19 @@ def scheduler_view(request):
         clients = clients.filter(pipeline_instances__pipeline__name__icontains=pipeline_q).distinct()
 
     settings = ScraperSettings.get_settings()
+    # Add pending runs count for the UI
+    pending_runs_count = Run.objects.filter(status='QUEUED').count()
     
     return render(request, 'dashboard/scheduler.html', {
         'clients': clients,
         'settings': settings,
+        'pending_runs_count': pending_runs_count,
         'client_q': client_q,
         'pipeline_q': pipeline_q
     })
 
 def update_scheduler_settings(request):
-    """Updates global concurrency or time window."""
+    """Updates global concurrency, time window, or execution attempts."""
     settings = ScraperSettings.get_settings()
     if 'limit' in request.POST:
         settings.max_concurrent_instances = request.POST.get('limit')
@@ -198,6 +201,8 @@ def update_scheduler_settings(request):
         settings.window_start_hour = request.POST.get('start')
     if 'end' in request.POST:
         settings.window_end_hour = request.POST.get('end')
+    if 'attempts' in request.POST:
+        settings.max_execution_attempts = request.POST.get('attempts')
     settings.save()
     return HttpResponse(status=204)
 
@@ -216,8 +221,18 @@ def toggle_instance_active(request, instance_id):
 def run_instance_manual(request, instance_id):
     """Triggers the Celery worker immediately, bypassing the dispatcher window."""
     if request.method == "POST":
-        # We don't mark it as 'is_queued' because we are sending it directly to Redis
-        run_pipeline_instance.delay(instance_id)
+        instance = get_object_or_404(PipelineInstance, id=instance_id)
+        # Create the Run record manually for manual trigger
+        run = Run.objects.create(
+            instance=instance,
+            client=instance.client,
+            pipeline=instance.pipeline,
+            status='RUNNING', # Mark as RUNNING immediately so dispatcher ignores it
+            step='DATA_RECOLLECTION',
+            last_log='Manual trigger started'
+        )
+        # Trigger the actual worker task immediately
+        run_pipeline_instance.delay(run.id)
         
         # Return a little 'Success' badge that HTMX will show on the button
         return HttpResponse('''

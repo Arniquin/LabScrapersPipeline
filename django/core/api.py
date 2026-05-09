@@ -75,6 +75,15 @@ def store_raw_data(request, run_id: uuid.UUID, data: DataPayloadSchema):
     run.save()
     return {"success": True}
 
+@api.get("/runs/{run_id}/raw", response=DataPayloadSchema)
+def get_raw_data(request, run_id: uuid.UUID):
+    """
+    Retrieves the raw JSON data associated with a specific Run.
+    Returns a 404 if no raw data has been stored for the given run_id.
+    """
+    raw_data = get_object_or_404(RawData, run_id=run_id)
+    return {"payload": raw_data.payload}
+
 @api.post("/runs/{run_id}/cleaned")
 def store_cleaned_data(request, run_id: uuid.UUID, data: DataPayloadSchema):
     """
@@ -93,3 +102,12 @@ def store_cleaned_data(request, run_id: uuid.UUID, data: DataPayloadSchema):
     run.last_log = "Pipeline completed successfully. Data cleaned and stored."
     run.save()
     return {"success": True}
+
+@api.get("/runs/{run_id}/cleaned", response=DataPayloadSchema)
+def get_cleaned_data(request, run_id: uuid.UUID):
+    """
+    Retrieves the cleaned JSON data associated with a specific Run.
+    Returns a 404 if no cleaned data has been stored for the given run_id.
+    """
+    cleaned_data = get_object_or_404(CleanedData, run_id=run_id)
+    return {"payload": cleaned_data.payload}
