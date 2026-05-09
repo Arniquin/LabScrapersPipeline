@@ -40,8 +40,10 @@ class PipelineInstance(models.Model):
 
 class Run(models.Model):
     STATUS_CHOICES = [
+        ('QUEUED', 'Queued'),
         ('RUNNING', 'Running'),
         ('FINISHED', 'Finished'),
+        ('PAUSED', 'Paused'),
         ('FAILED', 'Failed'),
     ]
     STEP_CHOICES = [
@@ -54,14 +56,17 @@ class Run(models.Model):
     instance = models.ForeignKey(PipelineInstance, on_delete=models.CASCADE, related_name='runs')
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='runs')
     pipeline = models.ForeignKey(Pipeline, on_delete=models.CASCADE, related_name='runs')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='RUNNING')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='QUEUED')
     step = models.CharField(max_length=50, choices=STEP_CHOICES)
     last_log = models.TextField(null=True, blank=True)  
+    attempt = models.IntegerField(default=0)
+    run_data = models.JSONField(blank=True, default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 class ScraperSettings(models.Model):
     max_concurrent_instances = models.IntegerField(default=2)
+    max_execution_attempts = models.IntegerField(default=3)
     # Using integer hours (0-23) for simplicity in the dispatcher
     window_start_hour = models.IntegerField(default=9) # 9 AM
     window_end_hour = models.IntegerField(default=18)  # 6 PM
