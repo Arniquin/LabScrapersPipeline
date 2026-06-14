@@ -1,178 +1,229 @@
-import os
 import random
-import time
-import requests
-import zipfile
-import re
-from typing import Tuple, List, Optional
+from playwright.async_api import async_playwright
+from playwright_stealth import Stealth
 
-# Usamos el webdriver estándar para evitar el error de desired_capabilities
-from selenium import webdriver 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import TimeoutException
-
-# Safely import Mage AI secrets manager
-try:
-    from mage_ai.data_preparation.shared.secrets import get_secret
-except ImportError:
-    get_secret = lambda key: os.environ.get(key)
-
-# Type Alias
-Locator = Tuple[By, str]
 
 class BaseScraper:
-    def __init__(self, driver=None, default_timeout: int = 30):
-        self.driver = driver
-        self.timeout = default_timeout
-        if self.driver:
-            self.wait = WebDriverWait(self.driver, self.timeout)
+    # Cohesive browser profile optimized for standard localized tracking
+    PROFILE = {
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "viewport": {"width": 1920, "height": 1080},
+        "platform": "Win32",
+        "locale": "es-MX",  # Matches Mexican IP localization
+        "timezone_id": "America/Mexico_City",  # Matches Mexican IP timezone
+    }
 
-    @classmethod
-    def test_proxy(cls, proxy_url: str) -> bool:
-        """Lightweight pre-flight check using Decodo's IP endpoint."""
-        print("Testing Decodo proxy connection...")
-        try:
-            test_result = requests.get(
-                'https://ip.decodo.com/json', 
-                proxies={'http': proxy_url, 'https': proxy_url},
-                timeout=10
+    def __init__(
+        self,
+        headless=True,
+        use_proxy=False,
+        proxy_user=None,
+        proxy_pass=None,
+        proxy_server=None,
+        remote_url=None,
+    ):
+        self.headless = headless
+        self.use_proxy = use_proxy
+        self.proxy_user = proxy_user
+        self.proxy_pass = proxy_pass
+        self.proxy_server = proxy_server
+        self.remote_url = remote_url
+
+        self.playwright_manager = None
+        self.playwright = None
+        self.browser = None
+        self.context = None
+        self.page = None
+
+    def _generate_decodo_url(self):
+        ports = [
+            "20001",
+            "20002",
+            "20003",
+            "20004",
+            "20005",
+            "20006",
+            "20007",
+            "20008",
+            "20009",
+            "20010",
+        ]
+        port = random.choice(ports)
+        url = self.proxy_server + ":" + port
+        return url  # Fixed: Added missing return statement
+
+    async def start(self):
+        """Launches the browser engine and applies strict data-saving protocols."""
+        # Async Playwright instantiation
+        self.playwright_manager = async_playwright()
+        self.playwright = await self.playwright_manager.start()
+
+        # 1. Build Targeted Decodo Proxy Configuration
+        proxy_config = None
+        if self.use_proxy:
+            if not self.proxy_user or not self.proxy_pass:
+                raise ValueError(
+                    "Proxy is enabled but Decodo credentials were not provided."
+                )
+
+            # Stick to a single IP during this session to avoid wasting authentication bandwidth
+            session_id = f"mx_sess_{random.randint(10000, 99999)}"
+
+            # CRITICAL: Appending '-country-mx' forces Decodo to pull from Mexican residential pools.
+            # Appending '-session-' preserves the IP context so you don't burn data switching nodes constantly.
+            targeted_username = f"{self.proxy_user}-country-mx-session-{session_id}"
+
+            print(
+                f"Configuring Decodo proxy: Targeting Mexico (MX) Residential Node..."
             )
-            test_result.raise_for_status()
-            ip_data = test_result.json()
-            print(f"Proxy Active! Current IP: {ip_data.get('ip')} in {ip_data.get('country')}")
-            return True
-        except Exception as e:
-            print(f"Proxy test failed: {e}")
-            return False
+            proxy_config = {
+                "server": self._generate_decodo_url(),
+                "username": targeted_username,
+                "password": self.proxy_pass,
+            }
 
-    @classmethod
-    def create_with_decodo(cls, port: int = 20001, timeout: int = 30, headless: bool = True):
-        username = get_secret('DECODO_USERNAME')
-        password = get_secret('DECODO_PASSWORD')
+        # 2. Setup Driver Connection
+        if self.remote_url:
+            cdp_url = self.remote_url.replace("/wd/hub", "")
+            print(f"Connecting to remote VNC container via CDP: {cdp_url}")
+            try:
+                self.browser = await self.playwright.chromium.connect_over_cdp(cdp_url)
+            except Exception as e:
+                if not self.headless:
+                    raise e
+                print(
+                    f"Failed to connect to remote Chrome: {e}. Falling back to local launch..."
+                )
+                self.browser = await self.playwright.chromium.launch(
+                    headless=True,
+                    args=["--disable-blink-features=AutomationControlled"],
+                )
+        else:
+            print("Launching local headless execution...")
+            self.browser = await self.playwright.chromium.launch(
+                headless=self.headless,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
 
-        if not username or not password:
-            raise ValueError("Decodo credentials not found in Mage Secrets.")
-
-        proxy_url = f"http://{username}:{password}@mx.decodo.com:{port}"
-
-        if not cls.test_proxy(proxy_url):
-            raise ConnectionError("Aborting Selenium initialization: Proxy test failed.")
-
-        return cls.create_with_driver(proxy_url=proxy_url, timeout=timeout, headless=headless)
-
-    @classmethod
-    def create_with_driver(cls, proxy_url: str = None, timeout: int = 30, headless: bool = True):
-        options = webdriver.ChromeOptions()
-        
-        if headless:
-            options.add_argument('--headless=new')
-        
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--window-size=1920,1080')
-
-        # Bandwidth Saver
-        prefs = {
-            "profile.managed_default_content_settings.images": 2,
-            "profile.managed_default_content_settings.media_stream": 2
+        # 3. Create Context with Unified Mexican Metadata
+        context_kwargs = {
+            "viewport": self.PROFILE["viewport"],
+            "user_agent": self.PROFILE["user_agent"],
+            "locale": self.PROFILE["locale"],
+            "timezone_id": self.PROFILE["timezone_id"],
         }
-        options.add_experimental_option("prefs", prefs)
+        if proxy_config:
+            context_kwargs["proxy"] = proxy_config
 
-        # Lógica de Autenticación mediante Extensión (Solución al error de SeleniumWire)
-        if proxy_url:
-            # Extraemos credenciales de la URL: http://user:pass@host:port
-            auth_match = re.match(r"http://(.+):(.+)@(.+):(\d+)", proxy_url)
-            if auth_match:
-                user, pw, host, port = auth_match.groups()
-                
-                # Creamos el plugin de Chrome al vuelo
-                plugin_file = '/tmp/proxy_auth_plugin.zip'
-                manifest_json = """
-                {
-                    "version": "1.0.0",
-                    "manifest_version": 2,
-                    "name": "Chrome Proxy",
-                    "permissions": ["proxy", "tabs", "unlimitedStorage", "storage", "<all_urls>", "webRequest", "webRequestBlocking"],
-                    "background": { "scripts": ["background.js"] },
-                    "minimum_chrome_version":"22.0.0"
-                }
-                """
-                background_js = """
-                var config = {
-                    mode: "fixed_servers",
-                    rules: {
-                        singleProxy: { scheme: "http", host: "%s", port: parseInt(%s) },
-                        bypassList: []
-                    }
-                };
-                chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
-                chrome.webRequest.onAuthRequired.addListener(
-                    function(details) {
-                        return { authCredentials: { username: "%s", password: "%s" } };
-                    },
-                    {urls: ["<all_urls>"]}, ["blocking"]
-                );
-                """ % (host, port, user, pw)
+        self.context = await self.browser.new_context(**context_kwargs)
 
-                with zipfile.ZipFile(plugin_file, 'w') as zp:
-                    zp.writestr("manifest.json", manifest_json)
-                    zp.writestr("background.js", background_js)
-                
-                options.add_extension(plugin_file)
-
-        remote_url = os.getenv('SELENIUM_URL', 'http://chrome:4444/wd/hub')
-
-        # Inicialización estándar de Selenium (Sin fallos de compatibilidad)
-        driver = webdriver.Remote(
-            command_executor=remote_url,
-            options=options
+        # Inject platform fingerprint overwrite
+        await self.context.add_init_script(
+            f"Object.defineProperty(navigator, 'platform', {{get: () => '{self.PROFILE['platform']}'}});"
         )
 
-        return cls(driver=driver, default_timeout=timeout)
+        self.page = await self.context.new_page()
 
-    # --- Métodos de utilidad (se mantienen igual) ---
-    def slow_type(self, element: WebElement, text: str, delay_range: Tuple[float, float] = (0.05, 0.15)):
-        element.clear()
+        # --- NEW V2.0+ STEALTH IMPLEMENTATION ---
+        stealth = Stealth()
+        await stealth.apply_stealth_async(self.page)
+
+        # 4. CRITICAL DATA SAVER: Intercept & Abort Heavy Resource Requests
+        # This single block prevents images, stylesheets, and fonts from transferring over your paid proxy.
+        async def block_heavy_resources(route):
+            allowed_types = ["document", "script", "xhr", "fetch"]
+            if route.request.resource_type not in allowed_types:
+                # Silently drop images, videos, stylesheets, fonts, and trackers
+                await route.abort()
+            else:
+                await route.continue_()
+
+        await self.page.route("**/*", block_heavy_resources)
+
+        print("Scraper successfully started with data-saving routing rules.")
+        return self.page
+
+    async def stop(self):
+        if self.context:
+            await self.context.close()
+        if self.browser:
+            await self.browser.close()
+        if self.playwright_manager:
+            # Safely exit the async context manager
+            await self.playwright_manager.__aexit__()
+        print("Scraper safely closed.")
+
+    async def human_type(self, locator, text, min_delay=50, max_delay=150):
+        await locator.focus()
         for char in text:
-            element.send_keys(char)
-            time.sleep(random.uniform(*delay_range))
+            await locator.press_sequentially(char)
+            if random.random() < 0.10:
+                await self.page.wait_for_timeout(random.uniform(300, 600))
+            else:
+                await self.page.wait_for_timeout(random.uniform(min_delay, max_delay))
 
-    def wait_for_present(self, locator: Locator, timeout: Optional[int] = None) -> Optional[WebElement]:
-        wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
+    async def human_jitter_click(self, element, clicks=1):
+        """
+        Moves the mouse to the DOM element object with human-like jitter, then clicks.
+
+        :param element: The Playwright ElementHandle object to click.
+        :param clicks: Number of times to click (default 1).
+        """
+        # 1. Bring the element into view and pause (humans read the screen after scrolling)
+        await element.scroll_into_view_if_needed()
+        await self.page.wait_for_timeout(random.randint(300, 700))
+
+        # 2. Extract the exact screen coordinates of the element object
+        box = await element.bounding_box()
+        if not box:
+            # Fallback if the element exists but is mathematically 0x0 or obscured
+            print("Warning: Could not get bounding box. Falling back to strict click.")
+            await element.click(click_count=clicks)
+            return
+
+        # 3. Define a safe clicking zone (avoid extreme edges)
+        # We target the inner 80% of the element's width and height
+        start_x = box["x"] + (box["width"] * 0.1)
+        end_x = box["x"] + (box["width"] * 0.9)
+        start_y = box["y"] + (box["height"] * 0.1)
+        end_y = box["y"] + (box["height"] * 0.9)
+
+        # Pick a randomized point inside that safe zone
+        target_x = random.uniform(start_x, end_x)
+        target_y = random.uniform(start_y, end_y)
+
+        # 4. Phase 1: The Overshoot (Jitter)
+        # Simulate a human swiping the mouse toward the button but missing slightly
+        jitter_x = target_x + random.uniform(-40, 40)
+        jitter_y = target_y + random.uniform(-20, 20)
+
+        # Move to the jitter point. The 'steps' parameter breaks the movement
+        # into multiple micro-events so it doesn't happen instantly.
+        await self.page.mouse.move(jitter_x, jitter_y, steps=random.randint(5, 12))
+
+        # Micro-pause as the human realizes they aren't on the button yet
+        await self.page.wait_for_timeout(random.randint(50, 150))
+
+        # 5. Phase 2: The Correction
+        # Move to the actual target coordinates
+        await self.page.mouse.move(target_x, target_y, steps=random.randint(3, 8))
+
+        # Hover pause before committing to the click
+        await self.page.wait_for_timeout(random.randint(100, 300))
+
+        # 6. Execute the click at the specific, non-centered X/Y coordinates
+        await self.page.mouse.click(target_x, target_y, click_count=clicks)
+
+    async def human_pause(self):
+        """Pauses execution randomly between 1 and 3 seconds."""
+        # Pick a random float between 1000ms (1s) and 3000ms (3s)
+        actual_wait = random.uniform(1000, 3000)
+
+        await self.page.wait_for_timeout(actual_wait)
+
+    async def wait_for_page_load(self):
+        await self.page.wait_for_load_state("domcontentloaded")
         try:
-            return wait.until(EC.presence_of_element_located(locator))
-        except TimeoutException:
-            return None
-
-    def wait_for_clickable(self, locator: Locator, timeout: Optional[int] = None) -> Optional[WebElement]:
-        wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
-        try:
-            return wait.until(EC.element_to_be_clickable(locator))
-        except TimeoutException:
-            return None
-
-    def wait_for_visible(self, locator: Locator, timeout: Optional[int] = None) -> Optional[WebElement]:
-        wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
-        try:
-            return wait.until(EC.visibility_of_element_located(locator))
-        except TimeoutException:
-            return None
-
-    def get_all_objects(self, locator: Locator, timeout: Optional[int] = None) -> List[WebElement]:
-        wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
-        try:
-            wait.until(EC.presence_of_all_elements_located(locator))
-            return self.driver.find_elements(*locator)
-        except TimeoutException:
-            return []
-
-    def human_jitter(self, min_s: float = 1.0, max_s: float = 3.5):
-        time.sleep(random.uniform(min_s, max_s))
-
-    def quit(self):
-        if self.driver:
-            self.driver.quit()
+            await self.page.wait_for_load_state("networkidle", timeout=5000)
+        except TimeoutError:
+            print("Network did not idle within 5 seconds, proceeding anyway...")

@@ -23,6 +23,26 @@ class RunManager:
             'X-Internal-Secret': self._api_token,
             'Content-Type': 'application/json' 
         })
+        self._cached_run = None
+
+    @property
+    def run_data(self) -> Dict[str, Any]:
+        """Lazy-loaded run_data from the API."""
+        if self._cached_run is None:
+            self.refresh()
+        return self._cached_run.get('run_data', {})
+
+    def refresh(self) -> Dict[str, Any]:
+        """Fetches the latest run details from the API."""
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}")
+        try:
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+            self._cached_run = response.json()
+            return self._cached_run
+        except Exception as e:
+            print(f"Refresh failed: {e}")
+            return {}
 
     @classmethod
     def start_run(cls, instance_id: str, initial_step: str = "DATA_RECOLLECTION") -> Optional['RunManager']:
@@ -49,21 +69,29 @@ class RunManager:
             print(f"RunManager failed to start: {e}")
             return None
 
-    def update(self, status: str = None, step: str = None, last_log: str = None):
+    def update(self, status: str = None, step: str = None, last_log: str = None, run_data: Dict[str, Any] = None):
         payload = {}
         if status in self.VALID_STATUSES: payload['status'] = status
         if step in self.VALID_STEPS: payload['step'] = step
         if last_log: payload['last_log'] = last_log
+        if run_data is not None: payload['run_data'] = run_data
         
         url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/update")
         try:
             self.session.patch(url, json=payload, timeout=10).raise_for_status()
+            if run_data is not None and self._cached_run:
+                self._cached_run['run_data'] = run_data
             return True
         except Exception as e:
             print(f"Update failed: {e}")
             return False
+
     def set_run_fail(self, log: str):
         return self.update(status='FAILED', last_log=log)
+
+    def set_run_pause(self, log: str, run_data: Dict[str, Any] = None):
+        """Pauses the run, allowing it to be resumed later."""
+        return self.update(status='PAUSED', last_log=log, run_data=run_data)
 
     def log(self, message: str):
         """Standard logging to the dashboard's last_log field."""
@@ -73,6 +101,33 @@ class RunManager:
         url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/raw")
         return self.session.post(url, json={'payload': payload}, timeout=10).json()
 
+    def get_raw_data(self) -> Optional[Dict[str, Any]]:
+        """Retrieves the raw data associated with this run, if any."""
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/raw")
+        try:
+            response = self.session.get(url, timeout=10)
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return response.json().get('payload')
+        except Exception as e:
+            print(f"Failed to fetch raw data: {e}")
+            return None
+
     def save_cleaned_data(self, payload: Dict[str, Any]):
         url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/cleaned")
         return self.session.post(url, json={'payload': payload}, timeout=10).json()
+
+    def get_cleaned_data(self) -> Optional[Dict[str, Any]]:
+        """Retrieves the cleaned data associated with this run, if any."""
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/cleaned")
+        try:
+            response = self.session.get(url, timeout=10)
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return response.json().get('payload')
+        except Exception as e:
+            print(f"Failed to fetch cleaned data: {e}")
+            return None
+

@@ -1,4 +1,4 @@
-# AUTO-GENERATED FROM example_pipeline.ipynb
+# AUTO-GENERATED FROM ebay_pipeline.ipynb
 import asyncio
 
 async def main():

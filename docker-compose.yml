@@ -15,7 +15,7 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - DB_HOST=db
       - DB_PORT=5432
-      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - PYTHONUNBUFFERED=1
     env_file:
       - .env
@@ -31,7 +31,8 @@ services:
   # --- Celery Worker (Para ejecutar los scrapers en segundo plano) ---
   celery_worker:
     build:
-      context: ./django/
+      context: .
+      dockerfile: celery/Dockerfile
     container_name: celery_worker
     restart: unless-stopped
     volumes:
@@ -45,7 +46,7 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - SELENIUM_REMOTE_URL=http://chrome:4444/wd/hub
+      - SELENIUM_REMOTE_URL=${SELENIUM_REMOTE_URL}
       - DECODO_USERNAME=${DECODO_USERNAME}
       - DECODO_PASSWORD=${DECODO_PASSWORD}
     env_file:
@@ -93,11 +94,12 @@ services:
     environment:
       - JUPYTER_ENABLE_LAB=yes
       - JUPYTER_TOKEN=${JUPYTER_TOKEN}
-      - SELENIUM_REMOTE_URL=http://chrome:4444/wd/hub
+      - SELENIUM_REMOTE_URL=${SELENIUM_REMOTE_URL}
       - DECODO_USERNAME=${DECODO_USERNAME}
       - DECODO_PASSWORD=${DECODO_PASSWORD}
     ports:
       - "8888:8888"
+    command: start-notebook.sh --ServerApp.default_url='/vscode'
     # deploy:
     #   resources:
     #     reservations:
@@ -115,16 +117,12 @@ services:
 
   # --- Contenedor de Chrome (Selenium + NoVNC) ---
   chrome:
-    image: selenium/standalone-chrome:latest
-    container_name: selenium-chrome
-    restart: unless-stopped
-    shm_size: 2gb
-    environment:
-      - SE_NODE_MAX_SESSIONS=2
-      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
-      - VNC_NO_PASSWORD=1 # Authelia ya se encarga de la seguridad
+    image: ghcr.io/browserless/chromium:latest
     ports:
-      - "7900:7900"
+      - "3000:3000" # Main CDP & Live Debugger Port
+    environment:
+      - TIMEOUT=300000
+      - MAX_CONCURRENT_SESSIONS=2
     # labels:
     #   - traefik.enable=true
     #   # Subdominio para ver el Bot

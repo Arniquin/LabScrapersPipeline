@@ -20,12 +20,26 @@ class UpdateRunSchema(Schema):
     status: Optional[str] = None
     step: Optional[str] = None
     last_log: Optional[str] = None
+    run_data: Optional[dict] = None
 
 class DataPayloadSchema(Schema):
     """Standard wrapper for JSON data blobs."""
     payload: dict
 
+class RunDetailSchema(Schema):
+    id: uuid.UUID
+    status: str
+    step: str
+    run_data: dict
+    attempt: int
+
 # --- Endpoints ---
+
+@api.get("/runs/{run_id}", response=RunDetailSchema)
+def get_run_detail(request, run_id: uuid.UUID):
+    """Retrieves the full details of a specific Run."""
+    run = get_object_or_404(Run, id=run_id)
+    return run
 
 @api.post("/runs/start")
 def start_run(request, data: StartRunSchema):
@@ -47,7 +61,7 @@ def start_run(request, data: StartRunSchema):
 
 @api.patch("/runs/{run_id}/update")
 def update_run(request, run_id: uuid.UUID, data: UpdateRunSchema):
-    """Updates status, current step, or log messages for an active run."""
+    """Updates status, current step, log messages, or run_data for an active run."""
     run = get_object_or_404(Run, id=run_id)
     
     if data.status: 
@@ -56,6 +70,8 @@ def update_run(request, run_id: uuid.UUID, data: UpdateRunSchema):
         run.step = data.step
     if data.last_log: 
         run.last_log = data.last_log
+    if data.run_data is not None:
+        run.run_data = data.run_data
         
     run.save()
     return {"success": True}

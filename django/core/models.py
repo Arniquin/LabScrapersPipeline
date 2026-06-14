@@ -60,6 +60,7 @@ class Run(models.Model):
     step = models.CharField(max_length=50, choices=STEP_CHOICES)
     last_log = models.TextField(null=True, blank=True)  
     attempt = models.IntegerField(default=0)
+    batch = models.IntegerField(default=0)
     run_data = models.JSONField(blank=True, default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

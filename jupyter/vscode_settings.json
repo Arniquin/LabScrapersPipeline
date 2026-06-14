@@ -1,0 +1,11 @@
+{
+    "python.defaultInterpreterPath": "/opt/conda/bin/python",
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "none",
+    "python.formatting.blackArgs": [],
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "workbench.colorTheme": "Default Dark Modern",
+    "jupyter.notebookEditor.defaultView": "jupyter",
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000
+}

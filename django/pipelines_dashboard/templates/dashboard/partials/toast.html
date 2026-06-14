@@ -1,0 +1,15 @@
+<template hx-swap-oob="beforeend:#toast-container">
+    <div class="animate-slide-in animate-fade-out pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border min-w-[300px]
+                {% if type == 'success' %}bg-slate-800 border-green-500/50 text-green-400{% else %}bg-slate-800 border-red-500/50 text-red-400{% endif %}">
+        <span class="material-symbols-outlined">
+            {% if type == 'success' %}check_circle{% else %}error{% endif %}
+        </span>
+        <div class="flex-1">
+            <p class="text-xs font-bold uppercase tracking-wider">{% if type == 'success' %}Success{% else %}Error{% endif %}</p>
+            <p class="text-sm text-slate-200">{{ message }}</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-slate-300 transition-colors">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+    </div>
+</template>

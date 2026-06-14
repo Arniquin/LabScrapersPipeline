@@ -9,6 +9,8 @@ urlpatterns = [
     path('', views.pipelines, name='pipelines'),
     path('load-pipelines/', views.load_pipelines, name='load_pipelines'),
     path('update-pipeline/<uuid:pipeline_id>/', views.update_pipeline, name='update_pipeline'),
+    path('upload-pipeline-script/<uuid:pipeline_id>/', views.upload_pipeline_script, name='upload_pipeline_script'),
+    path('upload-new-pipeline/', views.upload_new_pipeline, name='upload_new_pipeline'),
     # Clients
     path('clients/', views.clients_list, name='clients_list'),
     path('clients/add/', views.add_client, name='add_client'),
