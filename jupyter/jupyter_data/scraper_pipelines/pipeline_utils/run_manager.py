@@ -34,7 +34,7 @@ class RunManager:
 
     def refresh(self) -> Dict[str, Any]:
         """Fetches the latest run details from the API."""
-        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}")
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/")
         try:
             response = self.session.get(url, timeout=10)
             response.raise_for_status()
@@ -53,7 +53,7 @@ class RunManager:
         api_base_url = os.getenv('DJANGO_API_URL', 'http://django_app:8000')
         api_token = os.getenv('PIPELINE_API_SECRET')
         
-        url = urljoin(api_base_url, "/pipeline_api/runs/start")
+        url = urljoin(api_base_url, "/pipeline_api/runs/start/")
         payload = {
             "instance_id": instance_id,
             "initial_step": initial_step
@@ -76,7 +76,7 @@ class RunManager:
         if last_log: payload['last_log'] = last_log
         if run_data is not None: payload['run_data'] = run_data
         
-        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/update")
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/update/")
         try:
             self.session.patch(url, json=payload, timeout=10).raise_for_status()
             if run_data is not None and self._cached_run:
@@ -98,12 +98,12 @@ class RunManager:
         return self.update(last_log=message)
 
     def save_raw_data(self, payload: Dict[str, Any]):
-        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/raw")
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/raw/")
         return self.session.post(url, json={'payload': payload}, timeout=10).json()
 
     def get_raw_data(self) -> Optional[Dict[str, Any]]:
         """Retrieves the raw data associated with this run, if any."""
-        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/raw")
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/raw/")
         try:
             response = self.session.get(url, timeout=10)
             if response.status_code == 404:
@@ -115,12 +115,12 @@ class RunManager:
             return None
 
     def save_cleaned_data(self, payload: Dict[str, Any]):
-        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/cleaned")
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/cleaned/")
         return self.session.post(url, json={'payload': payload}, timeout=10).json()
 
     def get_cleaned_data(self) -> Optional[Dict[str, Any]]:
         """Retrieves the cleaned data associated with this run, if any."""
-        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/cleaned")
+        url = urljoin(self._api_base_url, f"/pipeline_api/runs/{self.run_id}/cleaned/")
         try:
             response = self.session.get(url, timeout=10)
             if response.status_code == 404:

@@ -35,13 +35,7 @@ class RunDetailSchema(Schema):
 
 # --- Endpoints ---
 
-@api.get("/runs/{run_id}", response=RunDetailSchema)
-def get_run_detail(request, run_id: uuid.UUID):
-    """Retrieves the full details of a specific Run."""
-    run = get_object_or_404(Run, id=run_id)
-    return run
-
-@api.post("/runs/start")
+@api.post("/runs/start/")
 def start_run(request, data: StartRunSchema):
     """
     Initiates a new Run entry. 
@@ -59,7 +53,13 @@ def start_run(request, data: StartRunSchema):
     )
     return {"run_id": str(run.id)}
 
-@api.patch("/runs/{run_id}/update")
+@api.get("/runs/{run_id}/", response=RunDetailSchema)
+def get_run_detail(request, run_id: uuid.UUID):
+    """Retrieves the full details of a specific Run."""
+    run = get_object_or_404(Run, id=run_id)
+    return run
+
+@api.patch("/runs/{run_id}/update/")
 def update_run(request, run_id: uuid.UUID, data: UpdateRunSchema):
     """Updates status, current step, log messages, or run_data for an active run."""
     run = get_object_or_404(Run, id=run_id)
@@ -76,7 +76,7 @@ def update_run(request, run_id: uuid.UUID, data: UpdateRunSchema):
     run.save()
     return {"success": True}
 
-@api.post("/runs/{run_id}/raw")
+@api.post("/runs/{run_id}/raw/")
 def store_raw_data(request, run_id: uuid.UUID, data: DataPayloadSchema):
     """Persists raw JSON data and moves the run to the STORING_RAW_DATA step."""
     run = get_object_or_404(Run, id=run_id)
@@ -91,7 +91,7 @@ def store_raw_data(request, run_id: uuid.UUID, data: DataPayloadSchema):
     run.save()
     return {"success": True}
 
-@api.get("/runs/{run_id}/raw", response=DataPayloadSchema)
+@api.get("/runs/{run_id}/raw/", response=DataPayloadSchema)
 def get_raw_data(request, run_id: uuid.UUID):
     """
     Retrieves the raw JSON data associated with a specific Run.
@@ -100,7 +100,7 @@ def get_raw_data(request, run_id: uuid.UUID):
     raw_data = get_object_or_404(RawData, run_id=run_id)
     return {"payload": raw_data.payload}
 
-@api.post("/runs/{run_id}/cleaned")
+@api.post("/runs/{run_id}/cleaned/")
 def store_cleaned_data(request, run_id: uuid.UUID, data: DataPayloadSchema):
     """
     Persists cleaned JSON data.
@@ -119,7 +119,7 @@ def store_cleaned_data(request, run_id: uuid.UUID, data: DataPayloadSchema):
     run.save()
     return {"success": True}
 
-@api.get("/runs/{run_id}/cleaned", response=DataPayloadSchema)
+@api.get("/runs/{run_id}/cleaned/", response=DataPayloadSchema)
 def get_cleaned_data(request, run_id: uuid.UUID):
     """
     Retrieves the cleaned JSON data associated with a specific Run.

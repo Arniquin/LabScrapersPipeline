@@ -1,5 +1,5 @@
 import random
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
 from playwright_stealth import Stealth
 
 
@@ -50,7 +50,7 @@ class BaseScraper:
         ]
         port = random.choice(ports)
         url = self.proxy_server + ":" + port
-        return url  # Fixed: Added missing return statement
+        return url
 
     async def start(self):
         """Launches the browser engine and applies strict data-saving protocols."""
@@ -144,23 +144,34 @@ class BaseScraper:
         return self.page
 
     async def stop(self):
-        if self.context:
-            await self.context.close()
-        if self.browser:
-            await self.browser.close()
-        if self.playwright_manager:
-            # Safely exit the async context manager
-            await self.playwright_manager.__aexit__()
+        try:
+            if self.context:
+                await self.context.close()
+            if self.browser:
+                await self.browser.close()
+        except (PlaywrightError, Exception):
+            # If the browser is already closed, we don't care about the error during cleanup
+            pass
+        finally:
+            if self.playwright_manager:
+                # Safely exit the async context manager
+                try:
+                    await self.playwright_manager.__aexit__()
+                except:
+                    pass
         print("Scraper safely closed.")
 
     async def human_type(self, locator, text, min_delay=50, max_delay=150):
-        await locator.focus()
-        for char in text:
-            await locator.press_sequentially(char)
-            if random.random() < 0.10:
-                await self.page.wait_for_timeout(random.uniform(300, 600))
-            else:
-                await self.page.wait_for_timeout(random.uniform(min_delay, max_delay))
+        try:
+            await locator.focus()
+            for char in text:
+                await locator.press_sequentially(char)
+                if random.random() < 0.10:
+                    await self.page.wait_for_timeout(random.uniform(300, 600))
+                else:
+                    await self.page.wait_for_timeout(random.uniform(min_delay, max_delay))
+        except PlaywrightError:
+            print("Browser closed while typing.")
 
     async def human_jitter_click(self, element, clicks=1):
         """
@@ -169,61 +180,66 @@ class BaseScraper:
         :param element: The Playwright ElementHandle object to click.
         :param clicks: Number of times to click (default 1).
         """
-        # 1. Bring the element into view and pause (humans read the screen after scrolling)
-        await element.scroll_into_view_if_needed()
-        await self.page.wait_for_timeout(random.randint(300, 700))
+        try:
+            # 1. Bring the element into view and pause (humans read the screen after scrolling)
+            await element.scroll_into_view_if_needed()
+            await self.page.wait_for_timeout(random.randint(300, 700))
 
-        # 2. Extract the exact screen coordinates of the element object
-        box = await element.bounding_box()
-        if not box:
-            # Fallback if the element exists but is mathematically 0x0 or obscured
-            print("Warning: Could not get bounding box. Falling back to strict click.")
-            await element.click(click_count=clicks)
-            return
+            # 2. Extract the exact screen coordinates of the element object
+            box = await element.bounding_box()
+            if not box:
+                # Fallback if the element exists but is mathematically 0x0 or obscured
+                print("Warning: Could not get bounding box. Falling back to strict click.")
+                await element.click(click_count=clicks)
+                return
 
-        # 3. Define a safe clicking zone (avoid extreme edges)
-        # We target the inner 80% of the element's width and height
-        start_x = box["x"] + (box["width"] * 0.1)
-        end_x = box["x"] + (box["width"] * 0.9)
-        start_y = box["y"] + (box["height"] * 0.1)
-        end_y = box["y"] + (box["height"] * 0.9)
+            # 3. Define a safe clicking zone (avoid extreme edges)
+            # We target the inner 80% of the element's width and height
+            start_x = box["x"] + (box["width"] * 0.1)
+            end_x = box["x"] + (box["width"] * 0.9)
+            start_y = box["y"] + (box["height"] * 0.1)
+            end_y = box["y"] + (box["height"] * 0.9)
 
-        # Pick a randomized point inside that safe zone
-        target_x = random.uniform(start_x, end_x)
-        target_y = random.uniform(start_y, end_y)
+            # Pick a randomized point inside that safe zone
+            target_x = random.uniform(start_x, end_x)
+            target_y = random.uniform(start_y, end_y)
 
-        # 4. Phase 1: The Overshoot (Jitter)
-        # Simulate a human swiping the mouse toward the button but missing slightly
-        jitter_x = target_x + random.uniform(-40, 40)
-        jitter_y = target_y + random.uniform(-20, 20)
+            # 4. Phase 1: The Overshoot (Jitter)
+            # Simulate a human swiping the mouse toward the button but missing slightly
+            jitter_x = target_x + random.uniform(-40, 40)
+            jitter_y = target_y + random.uniform(-20, 20)
 
-        # Move to the jitter point. The 'steps' parameter breaks the movement
-        # into multiple micro-events so it doesn't happen instantly.
-        await self.page.mouse.move(jitter_x, jitter_y, steps=random.randint(5, 12))
+            # Move to the jitter point. The 'steps' parameter breaks the movement
+            # into multiple micro-events so it doesn't happen instantly.
+            await self.page.mouse.move(jitter_x, jitter_y, steps=random.randint(5, 12))
 
-        # Micro-pause as the human realizes they aren't on the button yet
-        await self.page.wait_for_timeout(random.randint(50, 150))
+            # Micro-pause as the human realizes they aren't on the button yet
+            await self.page.wait_for_timeout(random.randint(50, 150))
 
-        # 5. Phase 2: The Correction
-        # Move to the actual target coordinates
-        await self.page.mouse.move(target_x, target_y, steps=random.randint(3, 8))
+            # 5. Phase 2: The Correction
+            # Move to the actual target coordinates
+            await self.page.mouse.move(target_x, target_y, steps=random.randint(3, 8))
 
-        # Hover pause before committing to the click
-        await self.page.wait_for_timeout(random.randint(100, 300))
+            # Hover pause before committing to the click
+            await self.page.wait_for_timeout(random.randint(100, 300))
 
-        # 6. Execute the click at the specific, non-centered X/Y coordinates
-        await self.page.mouse.click(target_x, target_y, click_count=clicks)
+            # 6. Execute the click at the specific, non-centered X/Y coordinates
+            await self.page.mouse.click(target_x, target_y, click_count=clicks)
+        except PlaywrightError:
+            print("Browser closed while performing jitter click.")
 
     async def human_pause(self):
         """Pauses execution randomly between 1 and 3 seconds."""
         # Pick a random float between 1000ms (1s) and 3000ms (3s)
         actual_wait = random.uniform(1000, 3000)
-
-        await self.page.wait_for_timeout(actual_wait)
+        try:
+            await self.page.wait_for_timeout(actual_wait)
+        except PlaywrightError:
+            print("Browser closed during pause.")
 
     async def wait_for_page_load(self):
-        await self.page.wait_for_load_state("domcontentloaded")
         try:
+            await self.page.wait_for_load_state("domcontentloaded")
             await self.page.wait_for_load_state("networkidle", timeout=5000)
-        except TimeoutError:
-            print("Network did not idle within 5 seconds, proceeding anyway...")
+        except (PlaywrightTimeoutError, PlaywrightError):
+            print("Network did not idle or target closed, proceeding...")
