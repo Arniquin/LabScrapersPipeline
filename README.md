@@ -1,5 +1,7 @@
 # LabScrapersPipeline
 
+## **WORK IN PROGRESS**
+
 A professional, fully-orchestrated web scraping platform. This ecosystem enables developers to prototype scrapers in Jupyter Lab and deploy them into a production-ready environment managed by Django and Celery.
 
 ---
