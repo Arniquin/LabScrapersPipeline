@@ -63,7 +63,10 @@ services:
     container_name: postgres_db
     restart: unless-stopped
     volumes:
-      - ./postgres/data:/var/lib/postgresql/data
+    # For Linux
+      # - ./postgres/data:/var/lib/postgresql/data
+    # For Windows
+      - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-djangodb}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -137,3 +140,7 @@ services:
 #   default:
 #     external:
 #       name: traefik_network
+
+# For Windows
+volumes:
+  postgres_data:

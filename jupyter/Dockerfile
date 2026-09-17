@@ -1,4 +1,4 @@
-FROM quay.io/jupyter/base-notebook:latest
+FROM quay.io/jupyter/base-notebook:python-3.13.14
 
 # Install system build dependencies as root
 USER root

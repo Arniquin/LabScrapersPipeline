@@ -1,52 +1,40 @@
 # --- Core Framework ---
-# Django 5.2 provides Long Term Support (LTS) through 2028
-Django
+Django==6.0.6
 # --- API Layer ---
-# Option A: Django Ninja (Modern, Fast, Pydantic-based)
-django-ninja
-
-# Option B: Django REST Framework (The Industry Standard)
-djangorestframework
-# OpenAPI 3 support for DRF
-drf-spectacular
+django-ninja==1.6.2
+djangorestframework==3.17.1
+drf-spectacular==0.29.0
 
 # --- Database & Performance ---
 # PostgreSQL adapter
-psycopg2-binary
-# Connection pooling and high-perf WSGI server
-gunicorn
-# For async support in Django (Uvicorn)
-uvicorn[standard]
+psycopg2-binary==2.9.12
+gunicorn==26.0.0
+uvicorn==0.49.0
 
 # --- Security & Environment ---
-# For handling .env files
-python-dotenv
-# Security headers for production
-django-csp
-# CORS headers for API access from other domains
-django-cors-headers
-
+python-dotenv==1.2.2
+django-csp==4.0
+django-cors-headers==4.9.0
 # --- Utilities ---
 # Image processing
-Pillow
+pillow==12.2.0
 # Advanced data validation
-pydantic
+pydantic==2.13.4
 
 # --- Asynchronous Tasks & Scheduling (Celery + Redis) ---
 # The main task queue framework
-celery
+celery==5.6.3
 # Python client for the Redis broker
-redis
+redis==8.0.1
 # Stores task results in the Django Database (requires 'django_celery_results' in INSTALLED_APPS)
-django-celery-results
+django_celery_results==2.6.0
 # Database-backed periodic tasks (requires 'django_celery_beat' in INSTALLED_APPS)
-django-celery-beat
+django-celery-beat==2.9.0
 
-python-dotenv
-requests
-polars
+requests==2.34.2
+polars==1.42.0
 
 # --- Automatización y Scrapping ---
 # Selenium 4.18+ es ideal para Python 3.11
-playwright
-playwright_stealth
+playwright==1.60.0
+playwright-stealth==2.0.3

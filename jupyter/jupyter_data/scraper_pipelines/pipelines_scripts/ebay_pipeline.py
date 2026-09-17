@@ -85,6 +85,9 @@ async def main():
     try:
         try:
             if STEP == 'DATA_RECOLLECTION':
+                # 1. INITIALIZE DATA CONTAINERS EARLY
+                data_dict = {}
+                
                 # Recover items from RawData if resuming from PAUSED
                 existing_payload = run.get_raw_data() or {}
                 all_items = existing_payload.get('items', [])
@@ -99,7 +102,10 @@ async def main():
                     elapsed_minutes = (time.time() - start_timestamp) / 60
                     if elapsed_minutes > MAX_RUNTIME_MINUTES:
                         run.log(f"Execution time exceeded {MAX_RUNTIME_MINUTES}m. Pausing for auto-resume.")
-                        run.save_raw_data({"items": all_items})
+                        if all_items:
+                            data_dict = {k: [i[k] for i in all_items] for k in all_items[0].keys()}
+                            run.save_raw_data({"items": data_dict})
+                        
                         run.set_run_pause("Timed out, pending ranges saved.", run_data=run_data)
                         sys.exit(0)
         
@@ -111,10 +117,8 @@ async def main():
                     await scraper.page.goto(url)
                     await scraper.wait_for_page_load()
                     
-                    # Extract result count (using generic eBay browse header selector)
                     count_text = await scraper.page.locator('.srp-controls__count-heading, .b-pageheader__copy').first.inner_text() if await scraper.page.locator('.srp-controls__count-heading, .b-pageheader__copy').count() > 0 else "0"
                     
-                    # Clean count text (e.g., "1,234 resultados" -> 1234)
                     import re
                     total_results = int("".join(re.findall(r'\d+', count_text.replace(',', '').replace('.', ''))) or 0)
                     
@@ -123,54 +127,70 @@ async def main():
                         mid = (low + high) // 2
                         run.log(f"Range ${low}-${high} has {total_results} items. Splitting into ${low}-${mid} and ${mid}-${high}.")
                         
-                        # Replace current range with two smaller ones
                         run_data['pending_ranges'].pop(0)
                         run_data['pending_ranges'] = [{"low": low, "high": mid}, {"low": mid, "high": high}] + run_data['pending_ranges']
                         run.update(run_data=run_data)
-                        continue # Restart loop with the new split ranges
+                        continue 
                     
                     # 3. SCRAPE THE RANGE
                     current_page = run_data.get('current_page', 1)
                     run.log(f"Processing Range ${low}-${high} ({total_results} results)")
                     
                     for page in range(current_page, 101):
-                        if page > 1: # We are already on page 1
+                        if page > 1:
                             page_url = f"https://mx.ebay.com/b/{brand}-{category}/{cat_id}/bn_{bn_id}?LH_BIN=1&_pgn={page}&_sop=15&_udhi={high}&_udlo={low}&mag=1&rt=nc"
                             await scraper.page.goto(page_url)
                             await scraper.wait_for_page_load()
                         
-                        items = await scraper.page.locator('li.s-item').all()
+                        # --- HUMAN BEHAVIOR BLOCK ---
+                        for _ in range(random.randint(3, 6)):
+                            scroll_amount = random.randint(400, 900)
+                            await scraper.page.mouse.wheel(0, scroll_amount)
+                            await scraper.page.wait_for_timeout(random.randint(500, 1200))
+                        
+                        items = await scraper.page.locator('.brwrvr__item-card__wrapper, .brw-product-card__wrapper').all()
+                        if items:
+                            target = random.choice(items[:min(5, len(items))])
+                            try:
+                                await target.hover()
+                                await scraper.page.wait_for_timeout(random.randint(800, 2000))
+                            except: pass 
+                        # ----------------------------
+                        
+                        items = await scraper.page.locator('.brwrvr__item-card__wrapper, .brw-product-card__wrapper').all()
                         if not items or await scraper.page.locator('.s-error-page').count() > 0:
                             break
                         
                         for item in items:
-                            title_el = item.locator('h3.s-item__title')
-                            if await title_el.count() > 0:
-                                all_items.append({
-                                    "brand": brand, "range": f"{low}-{high}",
-                                    "title": await title_el.inner_text(),
-                                    "price": await item.locator('.s-item__price').inner_text() if await item.locator('.s-item__price').count() > 0 else "0",
-                                    "url": await item.locator('.s-item__link').get_attribute('href')
-                                })
+                            try:
+                                title_el = item.locator('.bsig__title__text')
+                                price_el = item.locator('.bsig__price--displayprice, .bsig__price')
+                                link_el = item.locator('a.brwrvr__item-card__image-link, a.brw-product-card__image-link')
+                                
+                                if await title_el.count() > 0:
+                                    all_items.append({
+                                        "brand": brand, "range": f"{low}-{high}",
+                                        "title": await title_el.inner_text(),
+                                        "price": await price_el.first.inner_text() if await price_el.count() > 0 else "0",
+                                        "url": await link_el.get_attribute('href') if await link_el.count() > 0 else "N/A",
+                                        "scrape_timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                                    })
+                            except Exception: continue
                         
-                        # Page Checkpoint
                         run_data['current_page'] = page + 1
                         run.update(run_data=run_data)
                         await scraper.human_pause()
         
-                        # Re-check time during pagination
-                        if (time.time() - start_timestamp) / 60 > MAX_RUNTIME_MINUTES:
-                            break 
+                        if (time.time() - start_timestamp) / 60 > MAX_RUNTIME_MINUTES: break 
                     
-                    # Range Completed or Paused mid-range
-                    if (time.time() - start_timestamp) / 60 > MAX_RUNTIME_MINUTES:
-                         continue # Will be caught by the time check at start of while loop
+                    if (time.time() - start_timestamp) / 60 > MAX_RUNTIME_MINUTES: continue
                     
                     run_data['pending_ranges'].pop(0)
                     run_data['current_page'] = 1
                     run.update(run_data=run_data)
                     
-                data_dict = {k: [i[k] for i in all_items] for k in all_items[0].keys()} if all_items else {}
+                if all_items:
+                    data_dict = {k: [i[k] for i in all_items] for k in all_items[0].keys()}
                 
             elif STEP in ['STORING_RAW_DATA', 'CLEANING_RAW_DATA']:
                 raw_payload = run.get_raw_data() or {}
@@ -200,7 +220,6 @@ async def main():
 
     if STEP == 'CLEANING_RAW_DATA':
         try:
-            # The payload format is slightly different now (wrapped in 'items' dict)
             df = pl.DataFrame(data_dict)
             df = strip_all_str(df)
             
