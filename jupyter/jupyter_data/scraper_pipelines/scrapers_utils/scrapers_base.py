@@ -1,12 +1,15 @@
 import random
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
+from playwright.async_api import (
+    async_playwright,
+    TimeoutError as PlaywrightTimeoutError,
+    Error as PlaywrightError,
+)
 from playwright_stealth import Stealth
 
 
 class BaseScraper:
     # Cohesive browser profile optimized for standard localized tracking
     PROFILE = {
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "viewport": {"width": 1920, "height": 1080},
         "platform": "Win32",
         "locale": "es-MX",  # Matches Mexican IP localization
@@ -21,6 +24,7 @@ class BaseScraper:
         proxy_pass=None,
         proxy_server=None,
         remote_url=None,
+        full_render=False,
     ):
         self.headless = headless
         self.use_proxy = use_proxy
@@ -28,6 +32,7 @@ class BaseScraper:
         self.proxy_pass = proxy_pass
         self.proxy_server = proxy_server
         self.remote_url = remote_url
+        self.full_render = full_render
 
         self.playwright_manager = None
         self.playwright = None
@@ -96,19 +101,34 @@ class BaseScraper:
                 )
                 self.browser = await self.playwright.chromium.launch(
                     headless=True,
-                    args=["--disable-blink-features=AutomationControlled"],
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--enable-unsafe-swiftshader",  # Emulates GPU WebGL
+                        "--use-gl=angle",
+                        "--use-angle=swiftshader",
+                        "--disable-web-security",
+                        "--disable-features=IsolateOrigins,site-per-process",
+                        "--ignore-certificate-errors",
+                    ],
                 )
         else:
             print("Launching local headless execution...")
             self.browser = await self.playwright.chromium.launch(
                 headless=self.headless,
-                args=["--disable-blink-features=AutomationControlled"],
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--enable-unsafe-swiftshader",  # Emulates GPU WebGL
+                    "--use-gl=angle",
+                    "--use-angle=swiftshader",
+                    "--disable-web-security",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--ignore-certificate-errors",
+                ],
             )
 
         # 3. Create Context with Unified Mexican Metadata
         context_kwargs = {
             "viewport": self.PROFILE["viewport"],
-            "user_agent": self.PROFILE["user_agent"],
             "locale": self.PROFILE["locale"],
             "timezone_id": self.PROFILE["timezone_id"],
         }
@@ -138,7 +158,8 @@ class BaseScraper:
             else:
                 await route.continue_()
 
-        await self.page.route("**/*", block_heavy_resources)
+        if not self.full_render:
+            await self.page.route("**/*", block_heavy_resources)
 
         print("Scraper successfully started with data-saving routing rules.")
         return self.page
@@ -169,7 +190,9 @@ class BaseScraper:
                 if random.random() < 0.10:
                     await self.page.wait_for_timeout(random.uniform(300, 600))
                 else:
-                    await self.page.wait_for_timeout(random.uniform(min_delay, max_delay))
+                    await self.page.wait_for_timeout(
+                        random.uniform(min_delay, max_delay)
+                    )
         except PlaywrightError:
             print("Browser closed while typing.")
 
@@ -189,8 +212,10 @@ class BaseScraper:
             box = await element.bounding_box()
             if not box:
                 # Fallback if the element exists but is mathematically 0x0 or obscured
-                print("Warning: Could not get bounding box. Falling back to strict click.")
-                await element.click(click_count=clicks)
+                print(
+                    "Warning: Could not get bounding box. Falling back to strict click."
+                )
+                await element.click(click_count=clicks, timeout=60000)
                 return
 
             # 3. Define a safe clicking zone (avoid extreme edges)
