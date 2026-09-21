@@ -124,7 +124,8 @@ services:
     ports:
       - "3000:3000" # Main CDP & Live Debugger Port
     environment:
-      - TIMEOUT=300000
+      - CONNECTION_TIMEOUT=3600000
+      - TIMEOUT=3600000
       - MAX_CONCURRENT_SESSIONS=2
     # labels:
     #   - traefik.enable=true
