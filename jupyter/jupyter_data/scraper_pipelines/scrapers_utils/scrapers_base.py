@@ -197,61 +197,60 @@ class BaseScraper:
             print("Browser closed while typing.")
 
     async def human_jitter_click(self, element, clicks=1):
-        """
-        Moves the mouse to the DOM element object with human-like jitter, then clicks.
-
-        :param element: The Playwright ElementHandle object to click.
-        :param clicks: Number of times to click (default 1).
-        """
         try:
-            # 1. Bring the element into view and pause (humans read the screen after scrolling)
-            await element.scroll_into_view_if_needed()
+            print("    -> [Jitter] Scrolling into view...")
+            # HARD FORCED TIMEOUT: If it can't scroll in 5 seconds, crash immediately.
+            await element.scroll_into_view_if_needed(timeout=5000)
             await self.page.wait_for_timeout(random.randint(300, 700))
 
-            # 2. Extract the exact screen coordinates of the element object
+            print("    -> [Jitter] Getting bounding box...")
             box = await element.bounding_box()
             if not box:
-                # Fallback if the element exists but is mathematically 0x0 or obscured
-                print(
-                    "Warning: Could not get bounding box. Falling back to strict click."
-                )
-                await element.click(click_count=clicks, timeout=60000)
+                print("    -> [Jitter] Warning: No box. Falling back to strict click.")
+                await element.click(click_count=clicks, timeout=5000)
                 return
 
-            # 3. Define a safe clicking zone (avoid extreme edges)
-            # We target the inner 80% of the element's width and height
+            print(f"    -> [Jitter] Box found: {box}")
             start_x = box["x"] + (box["width"] * 0.1)
             end_x = box["x"] + (box["width"] * 0.9)
             start_y = box["y"] + (box["height"] * 0.1)
             end_y = box["y"] + (box["height"] * 0.9)
 
-            # Pick a randomized point inside that safe zone
             target_x = random.uniform(start_x, end_x)
             target_y = random.uniform(start_y, end_y)
 
-            # 4. Phase 1: The Overshoot (Jitter)
-            # Simulate a human swiping the mouse toward the button but missing slightly
             jitter_x = target_x + random.uniform(-40, 40)
             jitter_y = target_y + random.uniform(-20, 20)
 
-            # Move to the jitter point. The 'steps' parameter breaks the movement
-            # into multiple micro-events so it doesn't happen instantly.
+            print(
+                f"    -> [Jitter] Moving mouse to jitter phase ({jitter_x}, {jitter_y})..."
+            )
             await self.page.mouse.move(jitter_x, jitter_y, steps=random.randint(5, 12))
-
-            # Micro-pause as the human realizes they aren't on the button yet
             await self.page.wait_for_timeout(random.randint(50, 150))
 
-            # 5. Phase 2: The Correction
-            # Move to the actual target coordinates
+            print("    -> [Jitter] Moving mouse to target...")
             await self.page.mouse.move(target_x, target_y, steps=random.randint(3, 8))
-
-            # Hover pause before committing to the click
             await self.page.wait_for_timeout(random.randint(100, 300))
 
             # 6. Execute the click at the specific, non-centered X/Y coordinates
-            await self.page.mouse.click(target_x, target_y, click_count=clicks)
-        except PlaywrightError:
-            print("Browser closed while performing jitter click.")
+            print("    -> [Jitter] Executing physical click...")
+
+            # Calculate coordinates relative to the top-left of the element itself
+            relative_x = target_x - box["x"]
+            relative_y = target_y - box["y"]
+
+            # force=True bypasses invisible loading overlays that might block the click
+            # timeout=5000 ensures it will NEVER deadlock your script again
+            await element.click(
+                position={"x": relative_x, "y": relative_y},
+                click_count=clicks,
+                timeout=5000,
+            )
+
+            print("    -> [Jitter] Click complete!")
+
+        except Exception as e:
+            print(f"    -> [Jitter] CRASHED: {type(e).__name__} - {e}")
 
     async def human_pause(self):
         """Pauses execution randomly between 1 and 3 seconds."""
